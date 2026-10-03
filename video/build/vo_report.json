@@ -1,0 +1,32 @@
+[
+  {
+    "file": "vo_01_hook.mp3",
+    "start": 0.1,
+    "end": 3.559,
+    "tempo": 1.126
+  },
+  {
+    "file": "vo_02_identity.mp3",
+    "start": 3.679,
+    "end": 7.221,
+    "tempo": 1.126
+  },
+  {
+    "file": "vo_03_crossroads.mp3",
+    "start": 7.341,
+    "end": 10.969,
+    "tempo": 1.126
+  },
+  {
+    "file": "vo_04_gateway.mp3",
+    "start": 11.089,
+    "end": 14.016,
+    "tempo": 1.126
+  },
+  {
+    "file": "vo_05_closing.mp3",
+    "start": 14.136,
+    "end": 17.891,
+    "tempo": 1.126
+  }
+]
