@@ -1,0 +1,9 @@
+# وسائط وسيطة أثناء الإنتاج (يمكن إعادة توليدها)
+build/*.wav
+build/*.mp4
+build/frames/
+build/qc/
+build/font_test*.png
+build/preview_text.jpg
+build/contact_sheet.jpg
+build/qc_final.jpg
