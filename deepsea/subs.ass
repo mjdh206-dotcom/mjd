@@ -1,0 +1,35 @@
+[Script Info]
+PlayResX: 1080
+PlayResY: 1920
+ScriptType: v4.00+
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+YCbCr Matrix: TV.709
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Tag,Noto Kufi Arabic,42,&H00BFE8F5,&H000019FF,&H001E1E1E,&H96000000,-1,0,0,0,100,100,0,0,1,3,2,8,60,60,150,1
+Style: Title,Noto Kufi Arabic,84,&H00FFFFFF,&H000019FF,&H00141414,&HA0000000,-1,0,0,0,100,100,0,0,1,5,3,2,60,60,640,1
+Style: Sub,Noto Naskh Arabic,50,&H00E6F4F7,&H000019FF,&H00141414,&H96000000,0,0,0,0,100,100,0,0,1,3,2,2,60,60,540,1
+Style: Name,Noto Kufi Arabic,76,&H00F5E97F,&H000019FF,&H00141414,&HA0000000,-1,0,0,0,100,100,0,0,1,4,3,2,60,60,470,1
+Style: Fact,Noto Naskh Arabic,50,&H00F0F0F0,&H000019FF,&H00141414,&H96000000,0,0,0,0,100,100,0,0,1,3,2,2,60,60,385,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.20,0:00:10.44,Tag,,0,0,0,,{\fad(400,300)}من أعماق المحيط
+Dialogue: 0,0:00:00.50,0:00:10.44,Title,,0,0,0,,{\fad(500,400)}أغرب أسماك أعماق المحيطات
+Dialogue: 0,0:00:01.00,0:00:10.44,Sub,,0,0,0,,{\fad(500,400)}رحلةٌ إلى العالم المظلم حيث يبدأ المجهول
+Dialogue: 0,0:00:10.89,0:00:20.56,Name,,0,0,0,,{\fad(350,250)}سمكة الصياد
+Dialogue: 0,0:00:11.39,0:00:20.56,Fact,,0,0,0,,{\fad(350,250)}مصباحٌ حيوي على رأسها يجتذب الفرائس إلى أنيابها
+Dialogue: 0,0:00:21.01,0:00:29.33,Name,,0,0,0,,{\fad(350,250)}سمكة البليب فيش
+Dialogue: 0,0:00:21.51,0:00:29.33,Fact,,0,0,0,,{\fad(350,250)}جسدٌ هلامي بلا عظام تحت ضغط الأعماق الهائل
+Dialogue: 0,0:00:29.78,0:00:39.31,Name,,0,0,0,,{\fad(350,250)}أنقليس الجالبر
+Dialogue: 0,0:00:30.28,0:00:39.31,Fact,,0,0,0,,{\fad(350,250)}فمٌ ضخم يبتلع فرائسًا أكبر من جسده
+Dialogue: 0,0:00:39.76,0:00:49.22,Name,,0,0,0,,{\fad(350,250)}سمكة الرأس الشفاف
+Dialogue: 0,0:00:40.26,0:00:49.22,Fact,,0,0,0,,{\fad(350,250)}رأسٌ زجاجي تكشفه عينان خضراوان تتطلعان للأعلى
+Dialogue: 0,0:00:49.67,0:00:58.94,Name,,0,0,0,,{\fad(350,250)}حبارة فامبير
+Dialogue: 0,0:00:50.17,0:00:58.94,Fact,,0,0,0,,{\fad(350,250)}سحابةُ مخاطٍ متوهج لترويض أعدائها في العتمة
+Dialogue: 0,0:00:59.39,0:01:08.92,Name,,0,0,0,,{\fad(350,250)}سمكة المجذاف
+Dialogue: 0,0:00:59.89,0:01:08.92,Fact,,0,0,0,,{\fad(350,250)}أطول سمكةٍ على الأرض.. أحدَ عشرَ مترًا من الغموض
+Dialogue: 0,0:01:09.42,0:01:17.69,Name,,0,0,0,,{\fad(400,300)}عالمٌ لا يزال غامضًا
+Dialogue: 0,0:01:09.92,0:01:17.69,Fact,,0,0,0,,{\fad(400,300)}أعجبك الفيديو؟ تابعنا لمزيد من غرائب البحار
