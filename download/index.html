@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تحميل الفيديو — أسرار المحيطات</title>
+<style>
+  :root{
+    --bg1:#02080f; --bg2:#062033; --cyan:#7ce2ff; --card:#0a1a2a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    margin:0;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
+    "Noto Kufi Arabic","IBM Plex Sans Arabic",Tahoma,sans-serif;
+    background:radial-gradient(1200px 700px at 50% -10%,#0d3550 0%,var(--bg2) 40%,var(--bg1) 100%);
+    color:#eaf6ff;display:flex;flex-direction:column;align-items:center;
+    padding:28px 18px 60px;
+  }
+  h1{font-size:clamp(22px,5.5vw,34px);margin:6px 0 2px;text-align:center;letter-spacing:.2px}
+  .sub{color:#9dc4dd;font-size:clamp(13px,3.4vw,16px);margin-bottom:22px;text-align:center}
+  .player{
+    width:100%;max-width:380px;border-radius:22px;overflow:hidden;
+    box-shadow:0 24px 60px rgba(0,0,0,.6),0 0 0 1px rgba(124,226,255,.18);
+    background:#000;margin-bottom:26px;
+  }
+  video{display:block;width:100%;height:auto;background:#000}
+  .cards{width:100%;max-width:520px;display:flex;flex-direction:column;gap:14px}
+  .card{
+    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));
+    border:1px solid rgba(124,226,255,.20);border-radius:18px;padding:16px 16px 18px;
+    backdrop-filter:blur(6px);
+  }
+  .card h2{margin:0 0 4px;font-size:clamp(15px,4vw,18px)}
+  .meta{color:#8fb6cf;font-size:clamp(12px,3.2vw,13.5px);margin-bottom:13px;line-height:1.7}
+  .btn{
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    width:100%;padding:16px 18px;border-radius:14px;border:0;cursor:pointer;
+    font-size:clamp(15px,4.2vw,17px);font-weight:800;text-decoration:none;
+    color:#01202e;background:linear-gradient(180deg,#a8ecff,#5cc9ef);
+    box-shadow:0 10px 26px rgba(92,201,239,.35);
+    transition:transform .12s ease,box-shadow .12s ease;
+  }
+  .btn:active{transform:scale(.975)}
+  .btn.ghost{
+    color:#cdefff;background:transparent;border:1.5px solid rgba(124,226,255,.55);
+    box-shadow:none;font-weight:700;
+  }
+  .badge{
+    display:inline-block;font-size:12px;padding:3px 10px;border-radius:999px;
+    background:rgba(124,226,255,.14);border:1px solid rgba(124,226,255,.35);
+    color:#a9e6ff;margin-inline-start:8px;vertical-align:middle;font-weight:700;
+  }
+  .note{
+    max-width:520px;margin-top:26px;color:#8fb6cf;font-size:13px;line-height:2;
+    background:rgba(255,255,255,.03);border:1px dashed rgba(124,226,255,.25);
+    border-radius:16px;padding:14px 16px;
+  }
+  .note b{color:#cdefff}
+  ol{margin:8px 0 0;padding-inline-start:20px}
+  .done{
+    display:none;margin-top:12px;color:#9ff2c8;font-weight:700;font-size:14px;text-align:center
+  }
+  footer{color:#5d7f95;font-size:12px;margin-top:30px;text-align:center}
+</style>
+</head>
+<body>
+
+  <h1>🌊 أسرار المحيطات</h1>
+  <div class="sub">فيديو عمودي ٩:١٦ · ١٢ ثانية · تعليق صوتي + مؤثرات (بدون موسيقى)</div>
+
+  <div class="player">
+    <video src="ocean_secrets_reel.mp4" controls playsinline preload="metadata"
+           poster="poster.jpg"></video>
+  </div>
+
+  <div class="cards">
+
+    <div class="card">
+      <h2>تحميل النسخة الأصلية <span class="badge">1080×1920</span></h2>
+      <div class="meta">
+        أفضل جودة لجذب المشاهدات · MP4 (H.264 + AAC)<br>
+        المدة ١٢.٠٠ ثانية · 30fps · الحجم ١٠.٧ ميجابايت
+      </div>
+      <a class="btn" href="ocean_secrets_reel.mp4" download="ocean_secrets_reel.mp4">
+        ⬇️ تحميل الفيديو بجودة كاملة
+      </a>
+      <div class="done" id="done1">✔ بدأ التحميل… تفقّد مجلد «التنزيلات»</div>
+    </div>
+
+    <div class="card">
+      <h2>نسخة خفيفة للجوال <span class="badge">720×1280</span></h2>
+      <div class="meta">
+        تحميل أسرع وحجم أصغر — نفس الطول والصوت<br>
+        المدة ١٢.٠٠ ثانية · الحجم ٢.٢ ميجابايت فقط
+      </div>
+      <a class="btn ghost" href="ocean_secrets_reel_720p.mp4" download="ocean_secrets_reel_720p.mp4">
+        ⬇️ تحميل النسخة الخفيفة
+      </a>
+      <div class="done" id="done2">✔ بدأ التحميل… تفقّد مجلد «التنزيلات»</div>
+    </div>
+
+  </div>
+
+  <div class="note">
+    <b>إذا لم يبدأ التحميل تلقائياً:</b>
+    <ol>
+      <li>اضغط مطوّلاً (ضغطة طويلة) على زر التحميل ثم اختر <b>«تنزيل الملف»</b>.</li>
+      <li>أو شغّل الفيديو أعلى الصفحة واضغط على <b>⋮</b> ثم <b>«تنزيل»</b>.</li>
+      <li>في الآيفون: إن فتح الفيديو في نافذة جديدة، اضغط <b>مشاركة</b> ثم <b>«حفظ الفيديو»</b>.</li>
+    </ol>
+  </div>
+
+  <footer>جاهز للرفع على TikTok · Reels · Shorts · YouTube</footer>
+
+<script>
+  document.querySelectorAll('a.btn').forEach(function(a, i){
+    a.addEventListener('click', function(){
+      var d = document.getElementById(i === 0 ? 'done1' : 'done2');
+      setTimeout(function(){ d.style.display = 'block'; }, 600);
+    });
+  });
+</script>
+</body>
+</html>
