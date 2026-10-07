@@ -1,0 +1,5 @@
+Pillow>=12.3,<13
+numpy>=2.4,<3
+imageio-ffmpeg>=0.6,<0.7
+arabic-reshaper>=3,<4
+python-bidi>=0.6,<0.7
