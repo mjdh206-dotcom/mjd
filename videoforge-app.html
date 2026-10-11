@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>مصنع الفيديو - VideoForge</title>
+    
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #1B6B93;
+            --primary-light: #C6E8F5;
+            --primary-dark: #0D4A6B;
+            --secondary: #FC9D4A;
+            --secondary-light: #FFDCC0;
+            --bg: #F8FAFB;
+            --surface: #FFFFFF;
+            --surface-variant: #F0F0F5;
+            --on-bg: #1C1B1F;
+            --on-surface: #1C1B1F;
+            --on-surface-variant: #49454F;
+            --outline: #79747E;
+            --error: #B00020;
+            --success: #2E7D32;
+            --shadow: rgba(0,0,0,0.08);
+            --radius: 16px;
+            --radius-sm: 12px;
+            --radius-lg: 20px;
+        }
+
+        .dark {
+            --primary: #4FC3B0;
+            --primary-light: #00504A;
+            --primary-dark: #6DFBD0;
+            --secondary: #FFB74D;
+            --secondary-light: #5F4000;
+            --bg: #121212;
+            --surface: #1E1E1E;
+            --surface-variant: #2C2C2C;
+            --on-bg: #E6E1E5;
+            --on-surface: #E6E1E5;
+            --on-surface-variant: #CAC4D0;
+            --outline: #938F99;
+            --shadow: rgba(0,0,0,0.3);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans Arabic', sans-serif;
+            background: var(--bg);
+            color: var(--on-bg);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: var(--surface);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 12px;
+            z-index: 100;
+            box-shadow: 0 1px 3px var(--shadow);
+            transition: background 0.3s;
+        }
+        .top-bar h1 {
+            font-size: 20px;
+            font-weight: 700;
+            flex: 1;
+        }
+        .top-bar .subtitle {
+            font-size: 11px;
+            color: var(--on-surface-variant);
+            font-weight: 400;
+        }
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: var(--on-surface);
+            transition: background 0.2s;
+        }
+        .icon-btn:hover { background: var(--surface-variant); }
+        .icon-btn.active { background: var(--primary-light); color: var(--primary); }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 72px;
+            background: var(--surface);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 100;
+            box-shadow: 0 -1px 3px var(--shadow);
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 16px;
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+            color: var(--on-surface-variant);
+            font-family: inherit;
+            font-size: 11px;
+        }
+        .nav-item.active {
+            color: var(--primary);
+        }
+        .nav-item.active .nav-icon {
+            background: var(--primary-light);
+            border-radius: 16px;
+            padding: 4px 16px;
+        }
+        .nav-icon { font-size: 22px; padding: 4px 16px; }
+
+        /* Content Area */
+        .content {
+            padding: 80px 16px 88px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Screen sections */
+        .screen { display: none; }
+        .screen.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 4px var(--shadow);
+            transition: background 0.3s;
+        }
+        .card-variant {
+            background: var(--surface-variant);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        /* Input */
+        .input-area {
+            width: 100%;
+            min-height: 120px;
+            border: 2px solid var(--outline);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            font-family: inherit;
+            font-size: 16px;
+            color: var(--on-surface);
+            background: transparent;
+            resize: none;
+            outline: none;
+            transition: border-color 0.2s;
+            direction: rtl;
+        }
+        .input-area:focus { border-color: var(--primary); }
+        .input-area::placeholder { color: var(--on-surface-variant); opacity: 0.5; }
+
+        .text-input {
+            width: 100%;
+            border: 2px solid var(--outline);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            font-family: inherit;
+            font-size: 15px;
+            color: var(--on-surface);
+            background: transparent;
+            outline: none;
+            direction: rtl;
+            transition: border-color 0.2s;
+        }
+        .text-input:focus { border-color: var(--primary); }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary {
+            background: var(--secondary);
+            color: #000;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--outline);
+            color: var(--primary);
+        }
+        .btn-full { width: 100%; }
+
+        /* Chips */
+        .chip-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .chip {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1.5px solid var(--outline);
+            background: transparent;
+            font-family: inherit;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--on-surface);
+        }
+        .chip.selected {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
+            font-weight: 600;
+        }
+        .chip:hover:not(.selected) { border-color: var(--primary); }
+
+        /* Section titles */
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .section-title .link {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--primary);
+            cursor: pointer;
+        }
+
+        /* Template cards */
+        .template-row {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            scroll-snap-type: x mandatory;
+        }
+        .template-row::-webkit-scrollbar { display: none; }
+        .template-card {
+            min-width: 150px;
+            padding: 16px;
+            border-radius: var(--radius);
+            background: var(--surface);
+            box-shadow: 0 1px 4px var(--shadow);
+            cursor: pointer;
+            transition: transform 0.2s;
+            scroll-snap-align: start;
+        }
+        .template-card:hover { transform: translateY(-2px); }
+        .template-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-bottom: 8px;
+            color: white;
+        }
+        .template-card h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+        .template-card p { font-size: 12px; color: var(--on-surface-variant); line-height: 1.4; }
+
+        /* Provider items */
+        .provider-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px;
+            border-radius: var(--radius-sm);
+            background: var(--surface);
+            margin-bottom: 8px;
+            box-shadow: 0 1px 2px var(--shadow);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .provider-item:hover { background: var(--surface-variant); }
+        .provider-emoji { font-size: 28px; }
+        .provider-info { flex: 1; }
+        .provider-name { font-size: 14px; font-weight: 600; }
+        .provider-meta { font-size: 12px; color: var(--on-surface-variant); }
+        .provider-bar {
+            height: 4px;
+            background: var(--surface-variant);
+            border-radius: 2px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+        .provider-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            background: var(--primary);
+            transition: width 0.5s ease;
+        }
+        .provider-bar-fill.exhausted { background: var(--error); }
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-active { background: #E8F5E9; color: #2E7D32; }
+        .status-exhausted { background: #FFEBEE; color: #C62828; }
+        .status-cooldown { background: #FFF3E0; color: #E65100; }
+        .dark .status-active { background: #1B3A1B; }
+        .dark .status-exhausted { background: #3A1B1B; }
+        .dark .status-cooldown { background: #3A2E1B; }
+        .free-badge {
+            background: var(--secondary-light);
+            color: var(--secondary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+
+        /* Pipeline steps */
+        .step-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 6px;
+            transition: background 0.2s;
+        }
+        .step-item.completed { background: var(--primary-light); }
+        .step-item.active { background: var(--surface-variant); }
+        .step-icon { font-size: 22px; width: 36px; text-align: center; }
+        .step-info { flex: 1; }
+        .step-label { font-size: 14px; font-weight: 500; }
+        .step-item.pending .step-label { color: var(--on-surface-variant); opacity: 0.5; }
+        .step-progress {
+            height: 4px;
+            background: var(--surface-variant);
+            border-radius: 2px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+        .step-progress-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+        .step-check { color: var(--primary); font-size: 20px; }
+
+        /* Storyboard scene */
+        .scene-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 4px var(--shadow);
+        }
+        .scene-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .scene-number {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: var(--primary-light);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .scene-image-placeholder {
+            width: 100%;
+            height: 150px;
+            border-radius: var(--radius-sm);
+            background: var(--surface-variant);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            color: var(--on-surface-variant);
+            font-size: 14px;
+        }
+        .scene-narration {
+            background: var(--surface-variant);
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .scene-narration-label {
+            font-size: 12px;
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        /* Settings */
+        .setting-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--surface-variant);
+        }
+        .setting-item:last-child { border-bottom: none; }
+        .setting-icon { font-size: 20px; margin-left: 12px; color: var(--on-surface-variant); }
+        .setting-label { flex: 1; font-size: 14px; }
+        .toggle {
+            width: 48px;
+            height: 28px;
+            border-radius: 14px;
+            background: var(--outline);
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s;
+            border: none;
+        }
+        .toggle.on { background: var(--primary); }
+        .toggle::after {
+            content: '';
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: white;
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            transition: transform 0.2s;
+        }
+        .toggle.on::after { transform: translateX(-20px); }
+
+        /* Progress circle */
+        .progress-circle {
+            width: 100px;
+            height: 100px;
+            position: relative;
+            margin: 0 auto 16px;
+        }
+        .progress-circle svg { transform: rotate(-90deg); }
+        .progress-circle-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        /* Video preview */
+        .video-preview {
+            width: 100%;
+            aspect-ratio: 9/16;
+            max-height: 400px;
+            border-radius: var(--radius-lg);
+            background: linear-gradient(135deg, #0a1628 0%, #1a3a5c 50%, #0d2847 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        .play-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 28px;
+            color: white;
+            transition: transform 0.2s;
+        }
+        .play-btn:hover { transform: scale(1.1); }
+
+        /* Quick actions */
+        .quick-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        .quick-card {
+            background: var(--surface-variant);
+            border-radius: var(--radius);
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .quick-card:hover { transform: translateY(-2px); }
+        .quick-card-icon { font-size: 24px; margin-bottom: 8px; color: var(--primary); }
+        .quick-card-label { font-size: 12px; font-weight: 500; }
+
+        /* Hashtag */
+        .hashtag-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--outline);
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--on-surface);
+            background: transparent;
+            outline: none;
+            direction: rtl;
+        }
+        .hashtag-input:focus { border-color: var(--primary); }
+
+        /* Queue item */
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px;
+            background: var(--surface);
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+            box-shadow: 0 1px 2px var(--shadow);
+        }
+
+        /* Stat cards */
+        .stat-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 16px;
+            box-shadow: 0 1px 4px var(--shadow);
+        }
+        .stat-card-icon { font-size: 24px; color: var(--primary); margin-bottom: 8px; }
+        .stat-card-value { font-size: 22px; font-weight: 700; }
+        .stat-card-label { font-size: 12px; color: var(--on-surface-variant); }
+
+        /* Share buttons */
+        .share-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .share-btn {
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--outline);
+            background: transparent;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--on-surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .share-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+        /* Responsive */
+        @media (min-width: 768px) {
+            .content { padding: 80px 24px 88px; }
+        }
+
+        /* Snackbar */
+        .snackbar {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--on-surface);
+            color: var(--surface);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 200;
+            transition: transform 0.3s;
+            white-space: nowrap;
+        }
+        .snackbar.show { transform: translateX(-50%) translateY(0); }
+
+        /* Health report */
+        .health-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--surface-variant);
+        }
+        .health-item:last-child { border-bottom: none; }
+        .health-status { font-size: 18px; }
+        .health-name { flex: 1; font-size: 14px; }
+        .health-time { font-size: 12px; color: var(--on-surface-variant); }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div style="flex:1">
+            <h1>🎬 مصنع الفيديو</h1>
+            <span class="subtitle">حوّل أفكارك إلى فيديوهات بالذكاء الاصطناعي</span>
+        </div>
+        <button class="icon-btn" onclick="toggleDarkMode()" title="الوضع الليلي">🌙</button>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+        <!-- ========== HOME SCREEN ========== -->
+        <div class="screen active" id="screen-home">
+            <div style="margin-bottom: 20px;">
+                <h2 style="font-size: 26px; font-weight: 800; margin-bottom: 4px;">حوّل فكرتك إلى فيديو ✨</h2>
+                <p style="color: var(--on-surface-variant); font-size: 15px;">اكتب فكرة أو موضوع، وسيقوم التطبيق بإنتاج فيديو جاهز</p>
+            </div>
+
+            <div class="card-variant" style="border-radius: var(--radius-lg);">
+                <textarea class="input-area" id="ideaInput" placeholder="اكتب فكرة الفيديو هنا...&#10;مثال: أغرب ٥ حيوانات في أعماق المحيط"></textarea>
+                <div style="display: flex; justify-content: space-between; margin-top: 14px; align-items: center;">
+                    <button class="btn btn-outline" onclick="showSnackbar('🎙️ التسجيل الصوتي قريباً')">🎤 تحدث</button>
+                    <button class="btn btn-primary" id="generateBtn" onclick="startProduction()">✨ ابدأ الإنتاج</button>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 24px;">
+                <span>قوالب جاهزة</span>
+                <span class="link">عرض الكل</span>
+            </div>
+            <div class="template-row">
+                <div class="template-card" onclick="setIdea('أغرب ٥ حقائق عن المحيط العميق')">
+                    <div class="template-icon" style="background: linear-gradient(135deg, #1B6B93, #2196F3);">🔬</div>
+                    <h4>حقائق علمية</h4>
+                    <p>معلومات مذهلة عن الكون والطبيعة</p>
+                </div>
+                <div class="template-card" onclick="setIdea('قصة الحضارة السومرية وأول كتابة في التاريخ')">
+                    <div class="template-icon" style="background: linear-gradient(135deg, #8B4513, #D2691E);">📜</div>
+                    <h4>تاريخ</h4>
+                    <p>قصص وأحداث تاريخية مشوقة</p>
+                </div>
+                <div class="template-card" onclick="setIdea('٥ دروس من حياة أديب عربي غيّر العالم')">
+                    <div class="template-icon" style="background: linear-gradient(135deg, #E91E63, #FC9D4A);">❤️</div>
+                    <h4>تحفيز</h4>
+                    <p>كلمات ملهمة وقصص نجاح</p>
+                </div>
+                <div class="template-card" onclick="setIdea('كيف سيغير الذكاء الاصطناعي حياتنا في ٢٠٣٠')">
+                    <div class="template-icon" style="background: linear-gradient(135deg, #4CAF50, #00BCD4);">💻</div>
+                    <h4>تقنية</h4>
+                    <p>آخر الأخبار والاكتشافات التقنية</p>
+                </div>
+                <div class="template-card" onclick="setIdea('٧ عادات يومية تطيل عمرك حسب العلم')">
+                    <div class="template-icon" style="background: linear-gradient(135deg, #4CAF50, #8BC34A);">🏥</div>
+                    <h4>صحة</h4>
+                    <p>نصائح طبية ومعلومات صحية</p>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 24px;"><span>أدوات سريعة</span></div>
+            <div class="quick-row">
+                <div class="quick-card" onclick="showScreen('screen-brand')">
+                    <div class="quick-card-icon">🎨</div>
+                    <div class="quick-card-label">هوية القناة</div>
+                </div>
+                <div class="quick-card" onclick="showScreen('screen-analytics')">
+                    <div class="quick-card-icon">📊</div>
+                    <div class="quick-card-label">التحليلات</div>
+                </div>
+                <div class="quick-card" onclick="showScreen('screen-queue')">
+                    <div class="quick-card-icon">📋</div>
+                    <div class="quick-card-label">الانتظار <span style="background:var(--primary);color:white;border-radius:10px;padding:1px 6px;font-size:10px;">3</span></div>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 24px;"><span>المشاريع الأخيرة</span></div>
+            <div class="card-variant" style="text-align: center; padding: 40px;">
+                <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">🎬</div>
+                <p style="color: var(--on-surface-variant);">لا توجد مشاريع سابقة</p>
+                <p style="color: var(--on-surface-variant); font-size: 13px; margin-top: 4px;">ابدأ بكتابة فكرة لتوليد أول فيديو!</p>
+            </div>
+        </div>
+
+        <!-- ========== QUESTIONS SCREEN ========== -->
+        <div class="screen" id="screen-questions">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                <button class="icon-btn" onclick="prevQuestion()">→</button>
+                <div style="flex: 1;">
+                    <div style="font-weight: 700; font-size: 18px;" id="qTitle">المدة</div>
+                    <div style="font-size: 12px; color: var(--on-surface-variant);"><span id="qStep">1</span> من ٦</div>
+                </div>
+            </div>
+            <div style="height: 4px; background: var(--surface-variant); border-radius: 2px; margin-bottom: 20px;">
+                <div id="qProgress" style="height: 100%; background: var(--primary); border-radius: 2px; transition: width 0.3s; width: 16.6%;"></div>
+            </div>
+
+            <div id="qContent">
+                <!-- Dynamic content -->
+            </div>
+
+            <div style="margin-top: 24px; display: flex; gap: 12px;">
+                <button class="btn btn-outline" style="flex:1" id="qPrev" onclick="prevQuestion()">السابق</button>
+                <button class="btn btn-primary" style="flex:1" id="qNext" onclick="nextQuestion()">التالي</button>
+            </div>
+        </div>
+
+        <!-- ========== STORYBOARD SCREEN ========== -->
+        <div class="screen" id="screen-storyboard">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <div>
+                    <h2 style="font-weight: 700;">📋 لوحة القصة</h2>
+                    <p style="font-size: 12px; color: var(--on-surface-variant);">٤ مشاهد</p>
+                </div>
+                <button class="icon-btn" onclick="showSnackbar('➕ إضافة مشهد')">➕</button>
+            </div>
+
+            <div class="scene-card">
+                <div class="scene-header">
+                    <div class="scene-number">١</div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 14px;">هوك: سؤال مثير</div>
+                        <span style="background: var(--secondary); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px;">هوك</span>
+                    </div>
+                    <div style="margin-right: auto; display: flex; gap: 4px;">
+                        <button class="icon-btn" style="width:32px;height:32px;font-size:16px" onclick="showSnackbar('🔄 إعادة توليد')">🔄</button>
+                    </div>
+                </div>
+                <div class="scene-image-placeholder">🖼️ close-up of deep sea creature in darkness</div>
+                <div class="scene-narration">
+                    <div class="scene-narration-label">🎙️ التعليق الصوتي</div>
+                    <div style="font-size: 14px;">في ظلام المحيط السحيق... شيء ما ينتظرك</div>
+                </div>
+            </div>
+
+            <div class="scene-card">
+                <div class="scene-header">
+                    <div class="scene-number">٢</div>
+                    <div style="font-weight: 600; font-size: 14px;">المشهد الرئيسي</div>
+                    <div style="margin-right: auto; display: flex; gap: 4px;">
+                        <button class="icon-btn" style="width:32px;height:32px;font-size:16px" onclick="showSnackbar('🔄 إعادة توليد')">🔄</button>
+                    </div>
+                </div>
+                <div class="scene-image-placeholder">🖼️ mysterious bioluminescent creature approaching</div>
+                <div class="scene-narration">
+                    <div class="scene-narration-label">🎙️ التعليق الصوتي</div>
+                    <div style="font-size: 14px;">يظهر كائن غريب بضوء أزرق ينبض من جسده</div>
+                </div>
+            </div>
+
+            <div class="scene-card">
+                <div class="scene-header">
+                    <div class="scene-number">٣</div>
+                    <div style="font-weight: 600; font-size: 14px;">التفاصيل المذهلة</div>
+                </div>
+                <div class="scene-image-placeholder">🖼️ detailed view of anglerfish lure glowing</div>
+                <div class="scene-narration">
+                    <div class="scene-narration-label">🎙️ التعليق الصوتي</div>
+                    <div style="font-size: 14px;">أغرب ما فيه؟ هذا الضوء ليس زينة... بل طُعم!</div>
+                </div>
+            </div>
+
+            <div class="scene-card">
+                <div class="scene-header">
+                    <div class="scene-number">٤</div>
+                    <div style="font-weight: 600; font-size: 14px;">الختام: سؤال محفّز</div>
+                </div>
+                <div class="scene-image-placeholder">🖼️ wide dramatic shot of the deep ocean</div>
+                <div class="scene-narration">
+                    <div class="scene-narration-label">🎙️ التعليق الصوتي</div>
+                    <div style="font-size: 14px;">لو ظهر لك هذا الضوء في الظلام... هل كنت ستقترب؟</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 16px;">
+                <button class="btn btn-outline" style="flex:1" onclick="showScreen('screen-questions')">← تعديل الأسئلة</button>
+                <button class="btn btn-primary" style="flex:1" onclick="startPipeline()">▶️ ابدأ الإنتاج</button>
+            </div>
+        </div>
+
+        <!-- ========== PIPELINE SCREEN ========== -->
+        <div class="screen" id="screen-pipeline">
+            <h2 style="font-weight: 700; margin-bottom: 16px;">⚙️ مسار الإنتاج</h2>
+
+            <div class="card" style="text-align: center; padding: 24px; background: var(--primary-light); border-radius: var(--radius-lg);">
+                <div class="progress-circle">
+                    <svg width="100" height="100">
+                        <circle cx="50" cy="50" r="42" fill="none" stroke="var(--surface-variant)" stroke-width="8"/>
+                        <circle cx="50" cy="50" r="42" fill="none" stroke="var(--primary)" stroke-width="8" 
+                            stroke-dasharray="264" id="progressCircle" stroke-dashoffset="264" stroke-linecap="round"/>
+                    </svg>
+                    <div class="progress-circle-text" id="progressPercent">0%</div>
+                </div>
+                <div style="font-weight: 700; font-size: 16px;">جاري الإنتاج...</div>
+                <div style="color: var(--primary); font-size: 14px; margin-top: 4px;" id="currentStepLabel">توليد السكربت</div>
+            </div>
+
+            <div id="pipelineSteps">
+                <div class="step-item" data-step="0">
+                    <div class="step-icon">📝</div>
+                    <div class="step-info">
+                        <div class="step-label">توليد السكربت</div>
+                        <div class="step-progress"><div class="step-progress-fill" style="width:0%"></div></div>
+                    </div>
+                    <span class="step-status">—</span>
+                </div>
+                <div class="step-item" data-step="1">
+                    <div class="step-icon">📋</div>
+                    <div class="step-info">
+                        <div class="step-label">بناء لوحة القصة</div>
+                        <div class="step-progress"><div class="step-progress-fill" style="width:0%"></div></div>
+                    </div>
+                    <span class="step-status">—</span>
+                </div>
+                <div class="step-item" data-step="2">
+                    <div class="step-icon">🖼️</div>
+                    <div class="step-info">
+                        <div class="step-label">توليد الصور</div>
+                        <div class="step-progress"><div class="step-progress-fill" style="width:0%"></div></div>
+                    </div>
+                    <span class="step-status">—</span>
+                </div>
+                <div class="step-item" data-step="3">
+                    <div class="step-icon">🎙️</div>
+                    <div class="step-info">
+                        <div class="step-label">التعليق الصوتي</div>
+                        <div class="step-progress"><div class="step-progress-fill" style="width:0%"></div></div>
+                    </div>
+                    <span class="step-status">—</span>
+                </div>
+                <div class="step-item" data-step="4">
+                    <div class="step-icon">🎵</div>
+                    <div class="step-info">
+                        <div class="step-label">الموسيقى</div>
+                        <div class="step-progress"><div class="step-progress-fill" style="width:0%"></div></div>
+                    </div>
+                    <span class="step-status">—</span>
+                </div>
+                <div class="step-item" data-step="5">
+                    <div class="step-icon">🎬</div>
+                    <div class="step-info">
+                        <div class="step-label">المونتاج</div>
+                        <div class="step-progress"><div class="step-progress-fill" style="width:0%"></div></div>
+                    </div>
+                    <span class="step-status">—</span>
+                </div>
+                <div class="step-item" data-step="6">
+                    <div class="step-icon">📤</div>
+                    <div class="step-info">
+                        <div class="step-label">التصدير</div>
+                        <div class="step-progress"><div class="step-progress-fill" style="width:0%"></div></div>
+                    </div>
+                    <span class="step-status">—</span>
+                </div>
+            </div>
+
+            <div class="card-variant" style="margin-top: 16px; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 24px;">🔄</span>
+                <div>
+                    <div style="font-weight: 600; font-size: 14px;">التبديل التلقائي نشط</div>
+                    <div style="font-size: 12px; color: var(--on-surface-variant);">ينتقل بين المحركات تلقائياً عند نفاد الحصة</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== PREVIEW SCREEN ========== -->
+        <div class="screen" id="screen-preview">
+            <h2 style="font-weight: 700; margin-bottom: 16px;">👁️ المعاينة والتصدير</h2>
+
+            <div class="video-preview">
+                <div style="text-align: center; color: white;">
+                    <div class="play-btn" onclick="showSnackbar('▶️ معاينة الفيديو')">▶</div>
+                    <p style="margin-top: 12px; font-size: 14px; opacity: 0.7;">اضغط للمعاينة</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <label style="font-size: 13px; font-weight: 600; color: var(--on-surface-variant); display: block; margin-bottom: 6px;">📌 عنوان الفيديو</label>
+                <input class="text-input" value="أغرب ٥ حيوانات في أعماق المحيط 🌊" style="margin-bottom: 12px;">
+                
+                <label style="font-size: 13px; font-weight: 600; color: var(--on-surface-variant); display: block; margin-bottom: 6px;">📝 الوصف</label>
+                <textarea class="input-area" style="min-height: 80px; margin-bottom: 12px;">في أعماق المحيط حيث لا يصل الضوء، تعيش كائنات غريبة تبدو كأنها من كوكب آخر...</textarea>
+                
+                <label style="font-size: 13px; font-weight: 600; color: var(--on-surface-variant); display: block; margin-bottom: 6px;"># هاشتاغات</label>
+                <input class="hashtag-input" value="#محيط #حقائق #علوم #مخلوقات_بحرية #أعماق #طبيعة #معلومات #تعلم">
+            </div>
+
+            <button class="btn btn-secondary btn-full" onclick="showSnackbar('✨ جاري توليد عناوين بديلة...')" style="margin-bottom: 8px;">
+                ✨ توليد عناوين بديلة (A/B)
+            </button>
+
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                <button class="btn btn-outline" style="flex:1" onclick="showSnackbar('💾 تم الحفظ!')">💾 حفظ</button>
+                <button class="btn btn-primary" style="flex:1" onclick="showSnackbar('📤 جاري المشاركة...')">📤 مشاركة</button>
+            </div>
+
+            <div class="share-row" style="margin-bottom: 16px;">
+                <button class="share-btn" onclick="showSnackbar('▶️ نشر على يوتيوب')">▶️ يوتيوب</button>
+                <button class="share-btn" onclick="showSnackbar('🎵 مشاركة تيك توك')">🎵 تيك توك</button>
+                <button class="share-btn" onclick="showSnackbar('📸 مشاركة إنستا')">📸 إنستا</button>
+            </div>
+
+            <button class="btn btn-outline btn-full" onclick="resetApp()">+ فيديو جديد</button>
+        </div>
+
+        <!-- ========== PROVIDERS SCREEN ========== -->
+        <div class="screen" id="screen-providers">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <div>
+                    <h2 style="font-weight: 700;">🔌 محركات الذكاء الاصطناعي</h2>
+                    <p style="font-size: 12px; color: var(--on-surface-variant);">١١ نشط من ١٣</p>
+                </div>
+                <button class="btn btn-outline" onclick="runHealthCheck()" style="font-size: 13px; padding: 8px 14px;">
+                    🏥 فحص الصحة
+                </button>
+            </div>
+
+            <div class="card" style="margin-bottom: 16px;">
+                <div style="font-weight: 600; font-size: 14px; margin-bottom: 10px;">وضع التبديل</div>
+                <div class="chip-group">
+                    <button class="chip selected" onclick="selectChip(this)">تلقائي</button>
+                    <button class="chip" onclick="selectChip(this)">أعلى جودة</button>
+                    <button class="chip" onclick="selectChip(this)">أسرع</button>
+                    <button class="chip" onclick="selectChip(this)">أقل تكلفة</button>
+                </div>
+                <label style="display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 14px; cursor: pointer;">
+                    <input type="checkbox" checked> المجاني أولاً
+                </label>
+            </div>
+
+            <div id="providerList"></div>
+
+            <div id="healthReport" style="display:none; margin-top: 16px;">
+                <div class="card">
+                    <div style="font-weight: 600; font-size: 14px; margin-bottom: 12px;">📋 نتيجة فحص الصحة</div>
+                    <div id="healthItems"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== SETTINGS SCREEN ========== -->
+        <div class="screen" id="screen-settings">
+            <h2 style="font-weight: 700; margin-bottom: 16px;">⚙️ الإعدادات</h2>
+
+            <div class="section-title">عام</div>
+            <div class="card">
+                <div class="setting-item">
+                    <span class="setting-icon">🌙</span>
+                    <span class="setting-label">الوضع الليلي</span>
+                    <button class="toggle" id="toggleDark" onclick="toggleDarkMode()"></button>
+                </div>
+                <div class="setting-item">
+                    <span class="setting-icon">💾</span>
+                    <span class="setting-label">حفظ تلقائي للمسودات</span>
+                    <button class="toggle on" onclick="this.classList.toggle('on')"></button>
+                </div>
+                <div class="setting-item">
+                    <span class="setting-icon">📶</span>
+                    <span class="setting-label">توفير البيانات</span>
+                    <button class="toggle" onclick="this.classList.toggle('on')"></button>
+                </div>
+                <div class="setting-item">
+                    <span class="setting-icon">🔔</span>
+                    <span class="setting-label">الإشعارات</span>
+                    <button class="toggle on" onclick="this.classList.toggle('on')"></button>
+                </div>
+                <div class="setting-item">
+                    <span class="setting-icon">⚠️</span>
+                    <span class="setting-label">تحذير الجودة</span>
+                    <button class="toggle on" onclick="this.classList.toggle('on')"></button>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 20px;">التصدير</div>
+            <div class="card">
+                <div class="setting-item">
+                    <span class="setting-icon">🎬</span>
+                    <span class="setting-label">جودة التصدير</span>
+                    <span style="color: var(--on-surface-variant); font-size: 14px;">١٠٨٠p</span>
+                </div>
+                <div class="setting-item">
+                    <span class="setting-icon">📄</span>
+                    <span class="setting-label">صيغة الملف</span>
+                    <span style="color: var(--on-surface-variant); font-size: 14px;">MP4</span>
+                </div>
+                <div class="setting-item">
+                    <span class="setting-icon">💬</span>
+                    <span class="setting-label">حرق الترجمة</span>
+                    <span style="color: var(--on-surface-variant); font-size: 14px;">نعم</span>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 20px;">النسخ الاحتياطي</div>
+            <div class="card">
+                <div class="setting-item">
+                    <span class="setting-icon">☁️</span>
+                    <span class="setting-label">Google Drive</span>
+                    <span style="color: var(--on-surface-variant); font-size: 14px;">غير مُفعّل</span>
+                </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 20px;">حول</div>
+            <div class="card">
+                <div class="setting-item">
+                    <span class="setting-icon">ℹ️</span>
+                    <span class="setting-label">الإصدار</span>
+                    <span style="color: var(--on-surface-variant); font-size: 14px;">1.0.0</span>
+                </div>
+                <div class="setting-item">
+                    <span class="setting-icon">🛡️</span>
+                    <span class="setting-label">تشفير المفاتيح</span>
+                    <span style="color: var(--success); font-size: 14px;">✅ Android Keystore</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== QUEUE SCREEN ========== -->
+        <div class="screen" id="screen-queue">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <div>
+                    <h2 style="font-weight: 700;">📋 قائمة الانتظار</h2>
+                    <p style="font-size: 12px; color: var(--on-surface-variant);">٢ نشط • ١ مكتمل</p>
+                </div>
+                <button class="icon-btn" onclick="showSnackbar('⏸️ إيقاف مؤقت')">⏸️</button>
+            </div>
+
+            <div class="queue-item">
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; font-size: 14px;">أغرب مخلوقات البحر</div>
+                    <div style="font-size: 12px; color: var(--on-surface-variant);">توليد الصور - مشهد ٣ من ٦</div>
+                    <div class="step-progress" style="margin-top: 6px;"><div class="step-progress-fill" style="width: 65%;"></div></div>
+                </div>
+                <span class="status-badge" style="background: var(--secondary-light); color: var(--secondary);">جاري ٦٥٪</span>
+            </div>
+
+            <div class="queue-item">
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; font-size: 14px;">تاريخ الحضارات القديمة</div>
+                    <div style="font-size: 12px; color: var(--on-surface-variant);">في الانتظار</div>
+                </div>
+                <span class="status-badge" style="background: var(--surface-variant);">انتظار</span>
+            </div>
+
+            <div class="queue-item">
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; font-size: 14px;">حقائق عن الفضاء 🚀</div>
+                    <div style="font-size: 12px; color: var(--on-surface-variant);">مكتمل ✓</div>
+                </div>
+                <span class="status-badge status-active">مكتمل</span>
+            </div>
+        </div>
+
+        <!-- ========== BRAND SCREEN ========== -->
+        <div class="screen" id="screen-brand">
+            <h2 style="font-weight: 700; margin-bottom: 16px;">🎨 هوية القناة</h2>
+
+            <input class="text-input" placeholder="اسم القناة" style="margin-bottom: 16px;">
+
+            <div class="card">
+                <div style="font-weight: 600; font-size: 14px; margin-bottom: 12px;">الألوان</div>
+                <div style="display: flex; gap: 16px;">
+                    <div>
+                        <div style="font-size: 12px; color: var(--on-surface-variant); margin-bottom: 4px;">أساسي</div>
+                        <div style="width: 48px; height: 48px; border-radius: 8px; background: #1B6B93;"></div>
+                        <input class="text-input" value="#1B6B93" style="width: 100px; margin-top: 4px; font-size: 12px; padding: 6px 8px;">
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: var(--on-surface-variant); margin-bottom: 4px;">ثانوي</div>
+                        <div style="width: 48px; height: 48px; border-radius: 8px; background: #FC9D4A;"></div>
+                        <input class="text-input" value="#FC9D4A" style="width: 100px; margin-top: 4px; font-size: 12px; padding: 6px 8px;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="font-weight: 600; font-size: 14px; margin-bottom: 12px;">الشعار والعلامة المائية</div>
+                <button class="btn btn-outline btn-full" onclick="showSnackbar('📷 اختيار شعار...')">📷 اختيار شعار</button>
+                <label style="display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 14px; cursor: pointer;">
+                    <input type="checkbox"> تفعيل العلامة المائية
+                </label>
+            </div>
+
+            <div class="card">
+                <div style="font-weight: 600; font-size: 14px; margin-bottom: 12px;">الصوت الثابت</div>
+                <button class="btn btn-outline btn-full" onclick="showSnackbar('🎙️ اختيار صوت...')">🎙️ اختيار صوت</button>
+            </div>
+
+            <button class="btn btn-primary btn-full" onclick="showSnackbar('✅ تم حفظ الهوية!')">💾 حفظ الهوية</button>
+        </div>
+
+        <!-- ========== ANALYTICS SCREEN ========== -->
+        <div class="screen" id="screen-analytics">
+            <h2 style="font-weight: 700; margin-bottom: 16px;">📊 التحليلات والاستهلاك</h2>
+
+            <div class="stat-row">
+                <div class="stat-card">
+                    <div class="stat-card-icon">🎬</div>
+                    <div class="stat-card-value">١٢</div>
+                    <div class="stat-card-label">الفيديوهات</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon">💰</div>
+                    <div class="stat-card-value">$٤.٢٣</div>
+                    <div class="stat-card-label">التكلفة</div>
+                </div>
+            </div>
+            <div class="stat-row">
+                <div class="stat-card">
+                    <div class="stat-card-icon">⏱️</div>
+                    <div class="stat-card-value">٣.٥ س</div>
+                    <div class="stat-card-label">الوقت الكلي</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-icon">🔌</div>
+                    <div class="stat-card-value">٧</div>
+                    <div class="stat-card-label">محركات نشطة</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="font-weight: 600; font-size: 14px; margin-bottom: 12px;">استهلاك المحركات اليوم</div>
+                <div style="margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                        <span>Gemini 🤖</span><span style="color: var(--on-surface-variant);">23/50</span>
+                    </div>
+                    <div class="step-progress"><div class="step-progress-fill" style="width: 46%;"></div></div>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                        <span>DeepSeek 🔍</span><span style="color: var(--on-surface-variant);">15/∞</span>
+                    </div>
+                    <div class="step-progress"><div class="step-progress-fill" style="width: 30%;"></div></div>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                        <span>Groq ⚡</span><span style="color: var(--error);">50/50 ❌</span>
+                    </div>
+                    <div class="step-progress"><div class="step-progress-fill" style="width: 100%; background: var(--error);"></div></div>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                        <span>Claude 🧠</span><span style="color: var(--on-surface-variant);">5/100</span>
+                    </div>
+                    <div class="step-progress"><div class="step-progress-fill" style="width: 5%;"></div></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="font-weight: 600; font-size: 14px; margin-bottom: 12px;">تفصيل التكلفة</div>
+                <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px;">
+                    <span>توليد النص (سكربت)</span><span>$0.15</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px;">
+                    <span>توليد الصور</span><span>$1.80</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px;">
+                    <span>التعليق الصوتي</span><span>$1.20</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px;">
+                    <span>توليد الفيديو</span><span>$0.80</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px;">
+                    <span>الموسيقى</span><span>$0.28</span>
+                </div>
+                <hr style="border: none; border-top: 1px solid var(--surface-variant); margin: 8px 0;">
+                <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; font-weight: 700;">
+                    <span>المجموع</span><span>$4.23</span>
+                </div>
+            </div>
+
+            <div class="card-variant" style="display: flex; gap: 12px; align-items: flex-start;">
+                <span style="font-size: 24px;">💡</span>
+                <div>
+                    <div style="font-weight: 600; font-size: 14px;">نصيحة لتوفير التكلفة</div>
+                    <div style="font-size: 13px; color: var(--on-surface-variant); margin-top: 4px;">
+                        تفعيل «المجاني أولاً» يقلل التكلفة بنسبة ٨٠٪ باستخدام DeepSeek و Groq
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button class="nav-item active" onclick="showScreen('screen-home')" id="nav-home">
+            <span class="nav-icon">🏠</span>
+            <span>الرئيسية</span>
+        </button>
+        <button class="nav-item" onclick="showScreen('screen-providers')" id="nav-providers">
+            <span class="nav-icon">🔌</span>
+            <span>المحركات</span>
+        </button>
+        <button class="nav-item" onclick="showScreen('screen-queue')" id="nav-queue">
+            <span class="nav-icon">📋</span>
+            <span>الانتظار</span>
+        </button>
+        <button class="nav-item" onclick="showScreen('screen-settings')" id="nav-settings">
+            <span class="nav-icon">⚙️</span>
+            <span>إعدادات</span>
+        </button>
+    </div>
+
+    <!-- Snackbar -->
+    <div class="snackbar" id="snackbar"></div>
+
+    <script>
+        // ==================== PROVIDER DATA ====================
+        const providers = [
+            { id: 'gemini', name: 'Google Gemini', emoji: '🤖', status: 'active', usage: 23, limit: 50, free: true, tasks: 'نص' },
+            { id: 'deepseek', name: 'DeepSeek', emoji: '🔍', status: 'active', usage: 15, limit: -1, free: true, tasks: 'نص' },
+            { id: 'groq', name: 'Groq', emoji: '⚡', status: 'exhausted', usage: 50, limit: 50, free: true, tasks: 'نص (الأسرع)' },
+            { id: 'mistral', name: 'Mistral AI', emoji: '🌀', status: 'active', usage: 10, limit: -1, free: true, tasks: 'نص' },
+            { id: 'claude', name: 'Claude', emoji: '🧠', status: 'active', usage: 5, limit: 100, free: false, tasks: 'نص' },
+            { id: 'gpt', name: 'OpenAI GPT', emoji: '🔮', status: 'active', usage: 8, limit: -1, free: false, tasks: 'نص + صور + صوت' },
+            { id: 'grok', name: 'Grok (xAI)', emoji: '🚀', status: 'active', usage: 3, limit: 20, free: false, tasks: 'نص' },
+            { id: 'elevenlabs', name: 'ElevenLabs', emoji: '🎙️', status: 'active', usage: 12000, limit: 50000, free: false, tasks: 'صوت' },
+            { id: 'edge_tts', name: 'Edge TTS', emoji: '🆓', status: 'active', usage: -1, limit: -1, free: true, tasks: 'صوت (مجاني)' },
+            { id: 'stability', name: 'Stable Diffusion', emoji: '🎨', status: 'active', usage: 30, limit: 100, free: false, tasks: 'صور' },
+            { id: 'runway', name: 'Runway Gen-3', emoji: '🎬', status: 'cooldown', usage: 5, limit: 10, free: false, tasks: 'فيديو' },
+        ];
+
+        // ==================== NAVIGATION ====================
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            
+            // Update bottom nav
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            if (screenId === 'screen-home') document.getElementById('nav-home').classList.add('active');
+            else if (screenId === 'screen-providers') document.getElementById('nav-providers').classList.add('active');
+            else if (screenId === 'screen-queue') document.getElementById('nav-queue').classList.add('active');
+            else if (screenId === 'screen-settings') document.getElementById('nav-settings').classList.add('active');
+        }
+
+        // ==================== HOME ====================
+        function setIdea(text) {
+            document.getElementById('ideaInput').value = text;
+            document.getElementById('ideaInput').focus();
+        }
+
+        function startProduction() {
+            const idea = document.getElementById('ideaInput').value.trim();
+            if (!idea) {
+                showSnackbar('✏️ اكتب فكرة أولاً');
+                return;
+            }
+            currentQuestion = 0;
+            updateQuestion();
+            showScreen('screen-questions');
+        }
+
+        // ==================== QUESTIONS ====================
+        let currentQuestion = 0;
+        const questions = [
+            {
+                title: 'مدة الفيديو',
+                options: ['١٥ ثانية', '٢٥ ثانية', '٤٥ ثانية', '٦٠ ثانية'],
+                type: 'radio',
+                default: 1
+            },
+            {
+                title: 'نسبة العرض',
+                options: ['عمودي 9:16 📱', 'أفقي 16:9 🖥️'],
+                type: 'radio',
+                default: 0
+            },
+            {
+                title: 'اللهجة',
+                options: ['فصحى', 'شامي', 'مصري', 'خليجي', 'مغربي', 'بيضاء'],
+                type: 'radio',
+                default: 0
+            },
+            {
+                title: 'التعليق الصوتي',
+                options: ['🆓 Edge TTS (مجاني)', '🎙️ ElevenLabs (أعلى جودة)', '🔮 OpenAI TTS', '🔊 Google TTS', '☁️ Azure Speech', '🔇 بدون تعليق'],
+                type: 'radio',
+                default: 0
+            },
+            {
+                title: 'أسلوب الصور',
+                options: ['🎬 سينمائي واقعي', '🎌 أنمي', '🎨 رسوم متحركة', '📹 وثائقي', '🧊 ثلاثي الأبعاد', '🖌️ ألوان مائية'],
+                type: 'radio',
+                default: 0
+            },
+            {
+                title: 'الموسيقى والمؤثرات',
+                options: ['🎵 نعم، مع موسيقى', '🔇 لا، بدون موسيقى'],
+                type: 'radio',
+                default: 0
+            }
+        ];
+
+        function updateQuestion() {
+            const q = questions[currentQuestion];
+            document.getElementById('qTitle').textContent = q.title;
+            document.getElementById('qStep').textContent = currentQuestion + 1;
+            document.getElementById('qProgress').style.width = ((currentQuestion + 1) / questions.length * 100) + '%';
+
+            const content = document.getElementById('qContent');
+            content.innerHTML = '<div class="chip-group">' + 
+                q.options.map((opt, i) => 
+                    `<button class="chip ${i === q.default ? 'selected' : ''}" onclick="selectChip(this)">${opt}</button>`
+                ).join('') + '</div>';
+
+            document.getElementById('qPrev').style.display = currentQuestion === 0 ? 'none' : '';
+            document.getElementById('qNext').textContent = currentQuestion === questions.length - 1 ? '✨ ابدأ التوليد' : 'التالي';
+        }
+
+        function nextQuestion() {
+            if (currentQuestion < questions.length - 1) {
+                currentQuestion++;
+                updateQuestion();
+            } else {
+                showScreen('screen-storyboard');
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestion > 0) {
+                currentQuestion--;
+                updateQuestion();
+            }
+        }
+
+        function selectChip(el) {
+            el.parentElement.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        // ==================== PIPELINE ANIMATION ====================
+        function startPipeline() {
+            showScreen('screen-pipeline');
+            const steps = document.querySelectorAll('#pipelineSteps .step-item');
+            const labels = ['توليد السكربت', 'بناء لوحة القصة', 'توليد الصور', 'التعليق الصوتي', 'الموسيقى', 'المونتاج', 'التصدير'];
+            const circle = document.getElementById('progressCircle');
+            const percentEl = document.getElementById('progressPercent');
+            const stepLabel = document.getElementById('currentStepLabel');
+            const totalSteps = steps.length;
+            let current = 0;
+
+            function animateStep() {
+                if (current >= totalSteps) {
+                    showSnackbar('✅ اكتمل الإنتاج!');
+                    setTimeout(() => showScreen('screen-preview'), 1000);
+                    return;
+                }
+
+                const step = steps[current];
+                step.classList.add('active');
+                step.classList.remove('pending');
+                stepLabel.textContent = labels[current];
+
+                const fill = step.querySelector('.step-progress-fill');
+                const status = step.querySelector('.step-status');
+                let progress = 0;
+
+                const interval = setInterval(() => {
+                    progress += Math.random() * 15 + 5;
+                    if (progress >= 100) {
+                        progress = 100;
+                        clearInterval(interval);
+                        fill.style.width = '100%';
+                        status.textContent = '✓';
+                        status.style.color = 'var(--primary)';
+                        step.classList.remove('active');
+                        step.classList.add('completed');
+
+                        const overallPercent = Math.round(((current + 1) / totalSteps) * 100);
+                        percentEl.textContent = overallPercent + '%';
+                        circle.style.strokeDashoffset = 264 - (264 * overallPercent / 100);
+
+                        current++;
+                        setTimeout(animateStep, 300);
+                    } else {
+                        fill.style.width = progress + '%';
+                        const overallPercent = Math.round(((current + progress / 100) / totalSteps) * 100);
+                        percentEl.textContent = overallPercent + '%';
+                        circle.style.strokeDashoffset = 264 - (264 * overallPercent / 100);
+                    }
+                }, 100);
+            }
+
+            animateStep();
+        }
+
+        // ==================== PROVIDERS ====================
+        function renderProviders() {
+            const list = document.getElementById('providerList');
+            list.innerHTML = providers.map(p => {
+                const usageText = p.limit === -1 ? '∞' : `${p.usage}/${p.limit}`;
+                const barWidth = p.limit === -1 ? '30%' : (p.usage / p.limit * 100) + '%';
+                const barClass = p.status === 'exhausted' ? 'exhausted' : '';
+                const statusClass = p.status === 'active' ? 'status-active' : 
+                                   p.status === 'exhausted' ? 'status-exhausted' : 'status-cooldown';
+                const statusText = p.status === 'active' ? 'نشط' :
+                                  p.status === 'exhausted' ? 'انتهت' : 'تبريد';
+                
+                return `
+                    <div class="provider-item" onclick="showSnackbar('⚙️ إعدادات ${p.name}')">
+                        <span class="provider-emoji">${p.emoji}</span>
+                        <div class="provider-info">
+                            <div>
+                                <span class="provider-name">${p.name}</span>
+                                ${p.free ? '<span class="free-badge">مجاني</span>' : ''}
+                            </div>
+                            <div class="provider-meta">${p.tasks} • ${usageText}</div>
+                            <div class="provider-bar"><div class="provider-bar-fill ${barClass}" style="width: ${barWidth};"></div></div>
+                        </div>
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function runHealthCheck() {
+            showSnackbar('🏥 جاري فحص المحركات...');
+            const report = document.getElementById('healthReport');
+            const items = document.getElementById('healthItems');
+            
+            setTimeout(() => {
+                items.innerHTML = providers.map(p => {
+                    const latency = Math.floor(Math.random() * 500 + 100);
+                    const healthy = p.status !== 'exhausted';
+                    return `
+                        <div class="health-item">
+                            <span class="health-status">${healthy ? '✅' : '❌'}</span>
+                            <span class="health-name">${p.emoji} ${p.name}</span>
+                            <span class="health-time">${healthy ? latency + 'ms' : 'انتهت الحصة'}</span>
+                        </div>
+                    `;
+                }).join('');
+                report.style.display = 'block';
+                showSnackbar('✅ اكتمل فحص الصحة');
+            }, 2000);
+        }
+
+        // ==================== DARK MODE ====================
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark');
+            const toggle = document.getElementById('toggleDark');
+            if (toggle) toggle.classList.toggle('on');
+        }
+
+        // ==================== SNACKBAR ====================
+        function showSnackbar(msg) {
+            const sb = document.getElementById('snackbar');
+            sb.textContent = msg;
+            sb.classList.add('show');
+            setTimeout(() => sb.classList.remove('show'), 2500);
+        }
+
+        // ==================== RESET ====================
+        function resetApp() {
+            document.getElementById('ideaInput').value = '';
+            showScreen('screen-home');
+            // Reset pipeline
+            document.querySelectorAll('#pipelineSteps .step-item').forEach(step => {
+                step.classList.remove('active', 'completed');
+                step.querySelector('.step-progress-fill').style.width = '0%';
+                step.querySelector('.step-status').textContent = '—';
+                step.querySelector('.step-status').style.color = '';
+            });
+            document.getElementById('progressPercent').textContent = '0%';
+            document.getElementById('progressCircle').style.strokeDashoffset = '264';
+            showSnackbar('🔄 جاهز لفيديو جديد');
+        }
+
+        // ==================== INIT ====================
+        renderProviders();
+        updateQuestion();
+    </script>
+</body>
+</html>

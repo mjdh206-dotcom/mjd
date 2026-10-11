@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">مصنع الفيديو</string>
+    <string name="app_description">حوّل أفكارك إلى فيديوهات جاهزة بالذكاء الاصطناعي</string>
+
+    <!-- Main Navigation -->
+    <string name="nav_home">الرئيسية</string>
+    <string name="nav_projects">المشاريع</string>
+    <string name="nav_queue">قائمة الانتظار</string>
+    <string name="nav_providers">المحركات</string>
+    <string name="nav_settings">الإعدادات</string>
+    <string name="nav_brand">هوية القناة</string>
+    <string name="nav_analytics">التحليلات</string>
+
+    <!-- Home Screen -->
+    <string name="home_welcome">مرحباً بك في مصنع الفيديو</string>
+    <string name="home_subtitle">اكتب فكرتك وحوّلها إلى فيديو جاهز</string>
+    <string name="home_idea_hint">اكتب فكرة الفيديو هنا...</string>
+    <string name="home_voice_hint">أو اضغط للتحدث بالصوت</string>
+    <string name="home_generate">ابدأ الإنتاج</string>
+    <string name="home_drafts">المسودات</string>
+    <string name="home_templates">القوالب</string>
+    <string name="home_suggestions">اقتراحات</string>
+
+    <!-- Smart Questions -->
+    <string name="questions_title">أسئلة ذكية قبل البدء</string>
+    <string name="questions_duration">مدة الفيديو</string>
+    <string name="questions_ratio">نسبة العرض</string>
+    <string name="questions_dialect">اللهجة</string>
+    <string name="questions_voice">التعليق الصوتي</string>
+    <string name="questions_style">أسلوب الصور</string>
+    <string name="questions_music">الموسيقى والمؤثرات</string>
+    <string name="questions_continue">التالي</string>
+    <string name="questions_back">السابق</string>
+
+    <!-- Duration Options -->
+    <string name="duration_15">١٥ ثانية</string>
+    <string name="duration_25">٢٥ ثانية</string>
+    <string name="duration_45">٤٥ ثانية</string>
+    <string name="duration_60">٦٠ ثانية</string>
+
+    <!-- Aspect Ratio -->
+    <string name="ratio_vertical">عمودي (9:16)</string>
+    <string name="ratio_horizontal">أفقي (16:9)</string>
+
+    <!-- Dialects -->
+    <string name="dialect_fusha">فصحى</string>
+    <string name="dialect_shami">شامي</string>
+    <string name="dialect_egyptian">مصري</string>
+    <string name="dialect_gulf">خليجي</string>
+    <string name="dialect_maghreb">مغربي</string>
+    <string name="dialect_white">بيضاء</string>
+
+    <!-- Image Styles -->
+    <string name="style_cinematic">سينمائي واقعي</string>
+    <string name="style_anime">أنمي</string>
+    <string name="style_cartoon">رسوم متحركة</string>
+    <string name="style_documentary">وثائقي</string>
+    <string name="style_3d">ثلاثي الأبعاد</string>
+    <string name="style_watercolor">ألوان مائية</string>
+
+    <!-- Voice Options -->
+    <string name="voice_elevenlabs">ElevenLabs</string>
+    <string name="voice_google">Google TTS</string>
+    <string name="voice_openai">OpenAI TTS</string>
+    <string name="voice_azure">Azure Speech</string>
+    <string name="voice_edge">Edge TTS (مجاني)</string>
+    <string name="voice_none">بدون تعليق</string>
+
+    <!-- Storyboard -->
+    <string name="storyboard_title">لوحة القصة</string>
+    <string name="storyboard_scene">المشهد %d</string>
+    <string name="storyboard_edit_scene">تعديل المشهد</string>
+    <string name="storyboard_regenerate">إعادة التوليد</string>
+    <string name="storyboard_add_scene">إضافة مشهد</string>
+    <string name="storyboard_remove_scene">حذف المشهد</string>
+    <string name="storyboard_narration">النص الروائي</string>
+    <string name="storyboard_visual_desc">وصف الصورة</string>
+
+    <!-- Pipeline -->
+    <string name="pipeline_title">مسار الإنتاج</string>
+    <string name="pipeline_script">توليد السكربت</string>
+    <string name="pipeline_images">توليد الصور</string>
+    <string name="pipeline_audio">التعليق الصوتي</string>
+    <string name="pipeline_music">الموسيقى</string>
+    <string name="pipeline_montage">المونتاج</string>
+    <string name="pipeline_export">التصدير</string>
+    <string name="pipeline_in_progress">جاري المعالجة...</string>
+    <string name="pipeline_complete">اكتمل!</string>
+    <string name="pipeline_failed">فشلت العملية</string>
+    <string name="pipeline_retry">إعادة المحاولة</string>
+    <string name="pipeline_cancel">إلغاء</string>
+
+    <!-- Providers -->
+    <string name="providers_title">محركات الذكاء الاصطناعي</string>
+    <string name="providers_status_active">نشط</string>
+    <string name="providers_status_exhausted">انتهت الحصة</string>
+    <string name="providers_status_error">خطأ</string>
+    <string name="providers_status_cooldown">فترة تبريد</string>
+    <string name="providers_daily_usage">الاستخدام اليومي</string>
+    <string name="providers_reset_time">يعود الساعة</string>
+    <string name="providers_add_key">إضافة مفتاح API</string>
+    <string name="providers_health_check">فحص الصحة</string>
+    <string name="providers_health_running">جاري الفحص...</string>
+    <string name="providers_health_result">نتيجة الفحص</string>
+    <string name="providers_priority">ترتيب الأولوية</string>
+    <string name="providers_auto_mode">وضع تلقائي</string>
+    <string name="providers_free_first">المجاني أولاً</string>
+    <string name="providers_quality_warning">تحذير الجودة</string>
+    <string name="providers_key_added">تم إضافة المفتاح</string>
+    <string name="providers_key_removed">تم حذف المفتاح</string>
+    <string name="providers_drag_reorder">اسحب لإعادة الترتيب</string>
+
+    <!-- Provider Names -->
+    <string name="provider_gemini">Gemini</string>
+    <string name="provider_claude">Claude</string>
+    <string name="provider_gpt">GPT (OpenAI)</string>
+    <string name="provider_deepseek">DeepSeek</string>
+    <string name="provider_mistral">Mistral</string>
+    <string name="provider_groq">Groq</string>
+    <string name="provider_grok">Grok (xAI)</string>
+
+    <!-- Export -->
+    <string name="export_title">تصدير الفيديو</string>
+    <string name="export_quality_720">جودة 720p</string>
+    <string name="export_quality_1080">جودة 1080p</string>
+    <string name="export_with_substitles">مع ترجمة</string>
+    <string name="export_title_field">عنوان الفيديو</string>
+    <string name="export_description">وصف الفيديو</string>
+    <string name="export_hashtags">هاشتاغات</string>
+    <string name="export_share">مشاركة</string>
+    <string name="export_save">حفظ</string>
+    <string name="export_youtube">نشر على يوتيوب</string>
+    <string name="export_schedule">جدولة النشر</string>
+
+    <!-- Settings -->
+    <string name="settings_title">الإعدادات</string>
+    <string name="settings_general">عام</string>
+    <string name="settings_dark_mode">الوضع الليلي</string>
+    <string name="settings_auto_save">حفظ تلقائي للمسودات</string>
+    <string name="settings_data_saver">توفير البيانات</string>
+    <string name="settings_notifications">الإشعارات</string>
+    <string name="settings_backup">نسخ احتياطي</string>
+    <string name="settings_export_logs">تصدير السجلات</string>
+    <string name="settings_about">حول التطبيق</string>
+    <string name="settings_version">الإصدار</string>
+
+    <!-- Queue -->
+    <string name="queue_title">قائمة الانتظار</string>
+    <string name="queue_add">إضافة للقائمة</string>
+    <string name="queue_processing">قيد المعالجة</string>
+    <string name="queue_waiting">في الانتظار</string>
+    <string name="queue_done">مكتمل</string>
+    <string name="queue_clear">مسح القائمة</string>
+    <string name="queue_pause">إيقاف مؤقت</string>
+    <string name="queue_resume">استئناف</string>
+
+    <!-- Brand Kit -->
+    <string name="brand_title">هوية القناة</string>
+    <string name="brand_name">اسم القناة</string>
+    <string name="brand_colors">الألوان</string>
+    <string name="brand_font">الخط</string>
+    <string name="brand_logo">الشعار</string>
+    <string name="brand_watermark">العلامة المائية</string>
+    <string name="brand_voice">الصوت الثابت</string>
+
+    <!-- Analytics -->
+    <string name="analytics_title">التحليلات والاستهلاك</string>
+    <string name="analytics_cost">تكلفة الإنتاج</string>
+    <string name="analytics_usage">استهلاك المحركات</string>
+    <string name="analytics_videos">عدد الفيديوهات</string>
+    <string name="analytics_total_time">وقت الإنتاج الكلي</string>
+
+    <!-- Common -->
+    <string name="ok">موافق</string>
+    <string name="cancel">إلغاء</string>
+    <string name="save">حفظ</string>
+    <string name="delete">حذف</string>
+    <string name="edit">تعديل</string>
+    <string name="share">مشاركة</string>
+    <string name="undo">تراجع</string>
+    <string name="redo">إعادة</string>
+    <string name="loading">جاري التحميل...</string>
+    <string name="error_generic">حدث خطأ ما</string>
+    <string name="error_network">خطأ في الاتصال</string>
+    <string name="error_quota">انتهت الحصة من هذا المحرك</string>
+    <string name="success">تم بنجاح</string>
+    <string name="preview">معاينة</string>
+    <string name="preview_5sec">معاينة ٥ ثوانٍ</string>
+</resources>
