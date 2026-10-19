@@ -92,7 +92,7 @@ fun PurchasesScreen(vm: AppViewModel, navigate: (Screen) -> Unit) {
         if (editorOpen) {
             item {
                 SectionCard(title = "فاتورة شراء جديدة") {
-                    DropdownPicker("المورد", suppliers, suppliers.find { it.id == supplierId }, { it.name }) { supplierId = it.id }
+                    DropdownPicker("المورد", suppliers, suppliers.find { it.id == supplierId }, { it.name }, onSelect = { supplierId = it.id })
                     Spacer(Modifier.height(6.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         ActionChip("ليرة", { currency = Money.SYP }, filled = currency == Money.SYP)

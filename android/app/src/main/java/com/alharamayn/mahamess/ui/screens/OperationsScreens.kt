@@ -353,7 +353,7 @@ fun PreordersScreen(vm: AppViewModel) {
                 Spacer(Modifier.height(8.dp))
                 ActionChip("＋ طلب مسبق", {
                     editing = PreorderEntity(
-                        no = "PO-" + String(preorders.size + 1).padStart(3, '0'),
+                        no = "PO-" + (preorders.size + 1).toString().padStart(3, '0'),
                         customerName = "", date = Dates.today(), deliveryDate = Dates.addDays(3),
                         total = 0, deposit = 0, currency = Money.SYP,
                     )

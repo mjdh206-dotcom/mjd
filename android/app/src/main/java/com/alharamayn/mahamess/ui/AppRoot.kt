@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.alharamayn.mahamess.AppViewModel
-import com.alharamayn.mahamess.ui.screens.AdminScreen
 import com.alharamayn.mahamess.ui.screens.AuditScreen
 import com.alharamayn.mahamess.ui.screens.CashScreen
 import com.alharamayn.mahamess.ui.screens.CustomersScreen
@@ -185,16 +184,16 @@ private fun MainShell(vm: AppViewModel) {
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             when (val screen = current) {
-                is Screen.Dashboard -> DashboardScreen(vm, navigate)
-                is Screen.Sale -> SaleScreen(vm, null, back)
-                is Screen.EditInvoice -> SaleScreen(vm, screen.id, back)
-                is Screen.Invoices -> InvoicesScreen(vm, navigate)
-                is Screen.InvoiceDetail -> InvoiceDetailScreen(vm, screen.id, navigate, back)
+                is Screen.Dashboard -> DashboardScreen(vm, ::navigate)
+                is Screen.Sale -> SaleScreen(vm, null, ::back)
+                is Screen.EditInvoice -> SaleScreen(vm, screen.id, ::back)
+                is Screen.Invoices -> InvoicesScreen(vm, ::navigate)
+                is Screen.InvoiceDetail -> InvoiceDetailScreen(vm, screen.id, ::navigate, ::back)
                 is Screen.Items -> ItemsScreen(vm)
-                is Screen.Customers -> CustomersScreen(vm, navigate)
-                is Screen.Statement -> StatementScreen(vm, screen.customerId, back)
+                is Screen.Customers -> CustomersScreen(vm, ::navigate)
+                is Screen.Statement -> StatementScreen(vm, screen.customerId, ::back)
                 is Screen.Suppliers -> SuppliersScreen(vm)
-                is Screen.Purchases -> PurchasesScreen(vm, navigate)
+                is Screen.Purchases -> PurchasesScreen(vm, ::navigate)
                 is Screen.Inventory -> InventoryScreen(vm)
                 is Screen.Workers -> WorkersScreen(vm)
                 is Screen.Withdrawals -> WithdrawalsScreen(vm)
@@ -205,7 +204,7 @@ private fun MainShell(vm: AppViewModel) {
                 is Screen.Users -> UsersScreen(vm)
                 is Screen.Audit -> AuditScreen(vm)
                 is Screen.Settings -> SettingsScreen(vm)
-                is Screen.More -> MoreScreen(navigate)
+                is Screen.More -> MoreScreen(::navigate)
             }
         }
     }

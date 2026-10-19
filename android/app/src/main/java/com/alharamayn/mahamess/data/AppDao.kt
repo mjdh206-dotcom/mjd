@@ -156,6 +156,9 @@ interface AppDao {
     @Query("SELECT * FROM users ORDER BY role, name")
     fun users(): Flow<List<UserEntity>>
 
+    @Query("SELECT * FROM users")
+    suspend fun dumpUsers(): List<UserEntity>
+
     @Query("SELECT * FROM users WHERE pin = :pin AND active = 1 LIMIT 1")
     suspend fun userByPin(pin: String): UserEntity?
 

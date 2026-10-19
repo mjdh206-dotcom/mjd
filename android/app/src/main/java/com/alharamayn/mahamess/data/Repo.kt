@@ -109,7 +109,7 @@ class Repo(context: Context, val settingsStore: SettingsStore) {
         val totals = Calc.totals(draft.lines, draft.discountType, draft.discountValue)
         val count = dao.countInvoices(draft.type)
         val prefix = if (draft.type == "sale") "S" else "P"
-        val no = "$prefix-" + String(count + 1).padStart(4, '0')
+        val no = "$prefix-" + (count + 1).toString().padStart(4, '0')
         val paid = when (draft.payMethod) {
             "cash" -> totals.total
             "debt" -> 0L

@@ -220,7 +220,7 @@ private fun StocktakeDialog(vm: AppViewModel, initial: ItemEntity, items: List<I
         title = { Text("جرد يدوي") },
         text = {
             Column {
-                DropdownPicker("الصنف", items, item, { it.name }) { item = it }
+                DropdownPicker("الصنف", items, item, { it.name }, onSelect = { item = it })
                 Spacer(Modifier.height(8.dp))
                 Text(
                     "كمية النظام: " + if (isWeight) "${item.stock / 1000.0} كغ" else "${item.stock} قطعة",
@@ -269,9 +269,9 @@ private fun RoastDialog(vm: AppViewModel, items: List<ItemEntity>, onDismiss: ()
         title = { Text("تسجيل عملية تحميص") },
         text = {
             Column {
-                DropdownPicker("البن الخام", coffee, raw, { it.name }) { raw = it }
+                DropdownPicker("البن الخام", coffee, raw, { it.name }, onSelect = { raw = it })
                 Spacer(Modifier.height(6.dp))
-                DropdownPicker("الصنف المحمّص", coffee, roasted, { it.name }) { roasted = it }
+                DropdownPicker("الصنف المحمّص", coffee, roasted, { it.name }, onSelect = { roasted = it })
                 Spacer(Modifier.height(6.dp))
                 AppTextField(rawQty, { rawQty = it }, "كمية الخام (كغ)", numeric = true)
                 Spacer(Modifier.height(6.dp))
