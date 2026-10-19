@@ -42,11 +42,19 @@ import com.alharamayn.mahamess.ui.GoldLight
 @Composable
 fun LockScreen(vm: AppViewModel, settings: AppSettings) {
     var pin by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf("") }
     val message by vm.message.collectAsStateWithLifecycle()
     val users by vm.users.collectAsStateWithLifecycle()
     var selectedUserId by remember { mutableStateOf<Long?>(null) }
 
     fun submit(value: String) {
+        val selected = users.find { it.id == selectedUserId }
+        if (selected != null && selected.pin != value) {
+            error = "الرقم السري غير صحيح"
+            pin = ""
+            return
+        }
+        error = ""
         vm.login(value)
         pin = ""
     }
@@ -86,9 +94,10 @@ fun LockScreen(vm: AppViewModel, settings: AppSettings) {
                     )
                 }
             }
-            if (message != null) {
+            val shown = error.ifBlank { message ?: "" }
+            if (shown.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
-                Text(message ?: "", fontSize = 11.sp, color = Color(0xFFC62828), textAlign = TextAlign.Center)
+                Text(shown, fontSize = 11.sp, color = Color(0xFFC62828), textAlign = TextAlign.Center)
             }
             Spacer(Modifier.height(14.dp))
 

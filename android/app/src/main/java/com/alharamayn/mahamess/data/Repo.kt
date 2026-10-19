@@ -107,9 +107,12 @@ class Repo(context: Context, val settingsStore: SettingsStore) {
     /* ================= الفواتير ================= */
     suspend fun createInvoice(draft: InvoiceDraft): Long {
         val totals = Calc.totals(draft.lines, draft.discountType, draft.discountValue)
-        val count = dao.countInvoices(draft.type)
         val prefix = if (draft.type == "sale") "S" else "P"
-        val no = "$prefix-" + (count + 1).toString().padStart(4, '0')
+        val lastNumber = dao.dumpInvoices()
+            .filter { it.type == draft.type }
+            .mapNotNull { it.no.substringAfter("-", "").toIntOrNull() }
+            .maxOrNull() ?: 0
+        val no = "$prefix-" + (lastNumber + 1).toString().padStart(4, '0')
         val paid = when (draft.payMethod) {
             "cash" -> totals.total
             "debt" -> 0L

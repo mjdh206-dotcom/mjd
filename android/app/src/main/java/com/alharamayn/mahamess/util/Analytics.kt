@@ -95,7 +95,7 @@ object Analytics {
         var cashIn = 0L
         sales(invoices).filter { inRange(it.invoice.date) }.forEach { inv ->
             if (inv.invoice.paidCurrency == currency) cashIn += inv.invoice.paid
-            else if (inv.invoice.paidForeign > 0 && inv.invoice.paidCurrency == currency) cashIn += inv.invoice.paidForeign
+            else cashIn += inv.invoice.paidForeign
         }
         val payIn = payments.filter { it.partyType == "customer" && it.currency == currency && inRange(it.date) }
             .sumOf { it.amount }

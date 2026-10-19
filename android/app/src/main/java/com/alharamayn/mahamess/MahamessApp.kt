@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.first
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-class MahamessApp : Application() {
+class HaramaynApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         scheduleBackup()
