@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="espresso">#241710</color>
+    <color name="cream">#F5F0E6</color>
+    <color name="gold">#C2983F</color>
+
+    <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash</item>
+        <item name="android:statusBarColor">@color/espresso</item>
+        <item name="android:navigationBarColor">@color/cream</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:colorAccent">@color/gold</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+</resources>

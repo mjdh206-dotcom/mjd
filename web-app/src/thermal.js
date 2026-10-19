@@ -18,7 +18,7 @@ function buildCanvas(data) {
     ctx.fillText(txt, W / 2, y)
     y += parseInt(font) + gap
   }
-  const row = (right, left, font = '20px Tajawal, sans-serif', gap = 6) => {
+  const row = (right, left, font = '20px Cairo, sans-serif', gap = 6) => {
     ctx.font = font
     ctx.textAlign = 'right'
     ctx.direction = 'rtl'
@@ -33,36 +33,37 @@ function buildCanvas(data) {
     y += 8
   }
 
-  center(data.shopName, 'bold 30px Tajawal, sans-serif', 8)
-  center('فاتورة مبيعات', '22px Tajawal, sans-serif', 8)
-  if (data.phone) center(data.phone, '18px Tajawal, sans-serif')
+  center(data.shopName, 'bold 30px Cairo, sans-serif', 8)
+  center('فاتورة مبيعات', '22px Cairo, sans-serif', 8)
+  if (data.phone) center(data.phone, '18px Cairo, sans-serif')
   line()
   row(`رقم: ${data.no}`, '')
   row(`التاريخ: ${data.date}`, '')
   row(`الزبون: ${data.customer}`, '')
+  if (data.currency) row(`العملة: ${data.currency}`, '')
   line()
-  ctx.font = '18px Tajawal, sans-serif'
+  ctx.font = '18px Cairo, sans-serif'
   data.lines.forEach((l) => {
     ctx.textAlign = 'right'
     ctx.direction = 'rtl'
     ctx.fillText(l.name, W - 12, y)
     y += 22
-    ctx.font = '17px Tajawal, sans-serif'
+    ctx.font = '17px Cairo, sans-serif'
     ctx.textAlign = 'right'
     ctx.fillText(`${l.qty} × ${l.price}`, W - 12, y)
     ctx.textAlign = 'left'
     ctx.direction = 'ltr'
     ctx.fillText(l.total, 12, y)
     y += 22
-    ctx.font = '18px Tajawal, sans-serif'
+    ctx.font = '18px Cairo, sans-serif'
   })
   line()
-  row('الإجمالي', data.total, 'bold 22px Tajawal, sans-serif')
+  row('الإجمالي', data.total, 'bold 22px Cairo, sans-serif')
   row('المدفوع', data.paid)
   row('المتبقي', data.remaining)
   line()
-  center(data.footer || '', '16px Tajawal, sans-serif')
-  center('شكراً لزيارتكم', '18px Tajawal, sans-serif')
+  center(data.footer || '', '16px Cairo, sans-serif')
+  center('شكراً لزيارتكم', '18px Cairo, sans-serif')
   y += 30
 
   // قص الصورة على آخر سطر مستخدم
@@ -94,6 +95,13 @@ function toRaster(canvas) {
 }
 
 export async function printThermal(data) {
+  if (window.AndroidApp?.printImageBase64) {
+    try {
+      const canvas = buildCanvas(data)
+      window.AndroidApp.printImageBase64(canvas.toDataURL('image/png'))
+      return 'جارٍ إرسال الفاتورة إلى الطابعة…'
+    } catch { return 'تعذر تجهيز الفاتورة للطابعة' }
+  }
   if (!navigator.bluetooth) return 'المتصفح لا يدعم البلوتوث — استخدم تطبيق أندرويد للطباعة'
   try {
     const device = await navigator.bluetooth.requestDevice({

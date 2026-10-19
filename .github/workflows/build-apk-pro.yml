@@ -1,0 +1,91 @@
+name: Build Pro APK (WebView)
+
+on:
+  push:
+    branches: [arena/*]
+    paths:
+      - 'android-pro/**'
+      - 'web-app/**'
+      - '.github/workflows/build-apk-pro.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web-app/package-lock.json
+
+      - name: Build web bundle
+        working-directory: web-app
+        run: |
+          npm ci
+          npm run build
+
+      - name: Copy web bundle into Android assets
+        run: |
+          mkdir -p android-pro/app/src/main/assets/www
+          rm -rf android-pro/app/src/main/assets/www/*
+          cp -r web-app/dist/. android-pro/app/src/main/assets/www/
+          ls -lh android-pro/app/src/main/assets/www | head
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" > /dev/null 2>&1 || true
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build signed release APK
+        working-directory: android-pro
+        run: |
+          set -o pipefail
+          gradle :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee ../build-pro.log
+
+      - name: Collect artifacts
+        if: always()
+        run: |
+          mkdir -p dist-pro
+          find android-pro/app/build/outputs/apk -name "*.apk" -exec cp {} dist-pro/mahamess-alharamayn-pro-2.0.0.apk \; || true
+          cp build-pro.log dist-pro/build.log || true
+          ls -lh dist-pro || true
+
+      - name: Upload APK artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mahamess-pro-apk
+          path: dist-pro/
+          retention-days: 30
+
+      - name: Publish to build-artifacts branch
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin build-artifacts || true
+          git checkout -B build-artifacts origin/build-artifacts 2>/dev/null || git checkout --orphan build-artifacts
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          git add -f dist-pro/
+          git commit -m "pro build #${GITHUB_RUN_NUMBER} (${GITHUB_SHA:0:7})" || true
+          git push -f origin build-artifacts

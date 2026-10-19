@@ -2,7 +2,7 @@
 import { useSyncExternalStore } from 'react'
 import {
   convert, invoiceTotals, lineTotal, qtyBaseOf, todayISO, nowISO, uid,
-  rateToNumber, unitFactor, CURRENCIES,
+  rateToNumber, unitFactor, CURRENCIES, saveBlob,
 } from './utils'
 
 const KEY = 'mahamess_alharamayn_v1'
@@ -164,6 +164,7 @@ function seed() {
     if (inv.currency === 'USD') {
       // تحويل السطر إلى دولار
       inv.lines[0].unitPrice = Math.round(item.retail / rateToNumber(s.settings.rate) * 100)
+      inv.lines[0].costPerBase = Math.round(item.cost / rateToNumber(s.settings.rate) * 100)
       const t2 = invoiceTotals(inv.lines, 'none', 0)
       Object.assign(inv, t2)
       inv.paid = pay === 'cash' ? t2.total : Math.round(t2.total / 2)
@@ -431,7 +432,8 @@ export function saveInvoice(inv) {
         let nextCost = it.cost
         if (record.type === 'purchase') {
           const factor = unitFactor(line.unit)
-          const costPerBase = Math.round((line.unitPrice || 0) / (factor || 1))
+          const unitCostSYP = record.currency === 'USD' ? convert(line.unitPrice || 0, 'USD', 'SYP', record.rate) : (line.unitPrice || 0)
+          const costPerBase = Math.round(unitCostSYP / (factor || 1))
           const totalCost = it.stock * it.cost + (line.baseQty || 0) * costPerBase
           nextCost = nextStock > 0 ? Math.round(totalCost / nextStock) : costPerBase
         }
@@ -746,11 +748,15 @@ export function saveUser(u) {
 export function exportBackup() {
   const data = JSON.stringify({ app: 'mahamess-alharamayn', version: 1, exportedAt: nowISO(), state: { ...state, session: null } }, null, 2)
   const blob = new Blob([data], { type: 'application/json' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = `نسخة-محامص-الحرمين-${todayISO()}.json`
-  a.click()
-  URL.revokeObjectURL(a.href)
+  const filename = `نسخة-محامص-الحرمين-${todayISO()}.json`
+  if (window.AndroidApp?.saveBase64) saveBlob(blob, filename)
+  else {
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
   setState((s) => ({ ...s, settings: { ...s.settings, lastBackup: nowISO() } }))
 }
 

@@ -51,7 +51,7 @@ await wait(700)
 const loggedIn = document.body.innerHTML.includes('لوحة التحكم') || document.body.innerHTML.includes('أهلاً')
 console.log('worker login ok:', loggedIn); console.log([...document.querySelectorAll('.nav-item')].map(e => e.textContent).join(' | ')); process.exit(0)
 
-const screens = ['الأصناف', 'المخزون والتحميص', 'الزبائن', 'الموردون', 'المشتريات', 'المصاريف', 'الصندوق والإقفال', 'مسحوبات المحل', 'العمال والسحوبات', 'التقارير', 'المستخدمون', 'سجل العمليات', 'الإعدادات والنسخ', 'طلبات مسبقة', 'فواتير المبيعات', 'فاتورة جديدة']
+const screens = ['الأصناف', 'المخزون والتحميص', 'الزبائن وكشوفهم', 'الموردون', 'المشتريات', 'المصاريف', 'الصندوق والإقفال', 'مسحوبات المحل', 'العمال والسحوبات', 'التقارير والتحليلات', 'المستخدمون والصلاحيات', 'سجل العمليات', 'الإعدادات والنسخ', 'الطلبات المسبقة', 'فواتير المبيعات', 'بيع سريع']
 for (const s of screens) {
   const ok = await clickText(s)
   await wait(200)

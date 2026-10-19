@@ -1,130 +1,221 @@
-import { useRef, useState } from 'react'
-import { useStore, updateSettings, exportBackup, importBackup, resetDemo, setRate, rateNow } from '../store'
-import { rateToNumber, fmtDateTime, CURRENCIES } from '../utils'
-import { Card, Field, Toggle } from '../components'
+import { useMemo, useRef, useState } from 'react'
+import { useStore, updateSettings, setTheme, setRate, rateNow, exportBackup, importBackup, resetDemo, clearAll, saveItem } from '../store'
+import { CURRENCIES, money, rateToNumber, todayISO } from '../utils'
+import { Card, Field, PageHead, Seg, Toggle, ConfirmDialog, Modal } from '../components'
+import { Icon, BrandMark } from '../icons'
 
 export default function Settings({ onToast }) {
   const s = useStore()
-  const [f, setF] = useState({ ...s.settings, rate: rateToNumber(s.settings.rate) })
+  const [tab, setTab] = useState('shop')
+  const [form, setForm] = useState({
+    shopName: s.settings.shopName, branch: s.settings.branch, phone: s.settings.phone,
+    address: s.settings.address, invoiceFooter: s.settings.invoiceFooter,
+    ozGrams: String(s.settings.ozGrams), defaultCurrency: s.settings.defaultCurrency,
+  })
+  const [rateInput, setRateInput] = useState(String(rateNow()))
+  const [confirm, setConfirm] = useState(null)
+  const [importData, setImportData] = useState(null)
   const fileRef = useRef(null)
-  const isManager = s.session?.role === 'manager'
 
-  const save = () => {
+  const saveShop = () => {
     updateSettings({
-      ...f,
-      rate: Math.round(Number(f.rate) * 100),
-      ozGrams: Number(f.ozGrams) || 250,
+      shopName: form.shopName.trim() || 'محامص الحرمين', branch: form.branch, phone: form.phone, address: form.address,
+      invoiceFooter: form.invoiceFooter, ozGrams: Math.max(1, Number(form.ozGrams) || 250), defaultCurrency: form.defaultCurrency,
     })
-    onToast?.('تم حفظ الإعدادات')
+    onToast?.('تم حفظ بيانات المحل')
+  }
+
+  const storageSize = useMemo(() => {
+    try { return (JSON.stringify(s).length / 1024).toFixed(1) } catch { return '—' }
+  }, [s])
+
+  const doImport = (text) => {
+    try {
+      importBackup(text)
+      onToast?.('تمت استعادة النسخة الاحتياطية')
+      setImportData(null)
+    } catch (e) { onToast?.('ملف غير صالح أو تالف', 'error') }
   }
 
   return (
-    <div className="grid" style={{ gap: 12 }}>
-      <Card title="بيانات المحل" badge="تظهر على كل شاشة وفاتورة">
-        <div className="grid grid-2" style={{ gap: 10 }}>
-          <Field label="اسم المحل"><input className="input" value={f.shopName} onChange={(e) => setF({ ...f, shopName: e.target.value })} /></Field>
-          <Field label="الفرع"><input className="input" value={f.branch} onChange={(e) => setF({ ...f, branch: e.target.value })} /></Field>
-          <Field label="الهاتف"><input className="input" style={{ direction: 'ltr' }} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
-          <Field label="العنوان"><input className="input" value={f.address} onChange={(e) => setF({ ...f, address: e.target.value })} /></Field>
-          <Field label="عبارة أسفل الفاتورة"><input className="input" value={f.invoiceFooter} onChange={(e) => setF({ ...f, invoiceFooter: e.target.value })} /></Field>
-          <Field label="وزن الأوقية (غرام)" hint="يُستخدم لتحويل الأوقية إلى غرام/كيلو">
-            <input className="input" inputMode="numeric" value={f.ozGrams} onChange={(e) => setF({ ...f, ozGrams: e.target.value })} />
-          </Field>
-        </div>
-      </Card>
+    <div className="grid" style={{ gap: 16 }}>
+      <PageHead title="الإعدادات والنسخ الاحتياطي" subtitle="هوية المحل، إعدادات التشغيل، الحماية، والنسخ الاحتياطي الكامل" />
 
-      <div className="grid grid-2">
-        <Card title="العملة وسعر الصرف">
-          <div className="grid" style={{ gap: 10 }}>
-            <Field label="عملة الفاتورة الافتراضية">
-              <select className="select" value={f.defaultCurrency} onChange={(e) => setF({ ...f, defaultCurrency: e.target.value })}>
-                <option value="SYP">ليرة سورية</option><option value="USD">دولار أمريكي</option>
-              </select>
-            </Field>
-            <Field label="سعر صرف الدولار (ل.س)">
-              <div className="row" style={{ flexWrap: 'nowrap' }}>
-                <input className="input" inputMode="decimal" value={f.rate} onChange={(e) => setF({ ...f, rate: e.target.value })} />
-                <button className="btn btn-outline btn-sm" style={{ whiteSpace: 'nowrap' }} onClick={() => { setRate(Number(f.rate)); onToast?.('تم تحديث سعر الصرف') }}>تحديث الآن</button>
-              </div>
-            </Field>
-            <div className="small muted">السعر المحفوظ حالياً: <b>{rateNow().toLocaleString('en-US')} ل.س</b></div>
-          </div>
-        </Card>
+      <Seg block value={tab} onChange={setTab} options={[
+        { id: 'shop', label: 'هوية المحل', icon: 'bank' }, { id: 'ops', label: 'التشغيل والأسعار', icon: 'sliders' },
+        { id: 'security', label: 'الحماية والمظهر', icon: 'shield' }, { id: 'backup', label: 'النسخ الاحتياطي', icon: 'database' },
+      ]} />
 
-        <Card title="المظهر والأمان">
-          <div className="row" style={{ justifyContent: 'space-between', padding: '8px 0' }}>
-            <div><div style={{ fontWeight: 700, fontSize: 13 }}>الوضع الداكن</div><div className="small muted">راحة للعين في الإضاءة المنخفضة</div></div>
-            <Toggle on={f.theme === 'dark'} onChange={(v) => { setF({ ...f, theme: v ? 'dark' : 'light' }); updateSettings({ theme: v ? 'dark' : 'light' }) }} />
-          </div>
-          <div className="row" style={{ justifyContent: 'space-between', padding: '8px 0' }}>
-            <div><div style={{ fontWeight: 700, fontSize: 13 }}>الرقم السري عند فتح التطبيق</div><div className="small muted">مطلوب في كل مرة</div></div>
-            <Toggle on={f.pinEnabled} onChange={(v) => setF({ ...f, pinEnabled: v })} />
-          </div>
-          <Field label="الرقم السري للمدير" style={{ marginTop: 8 }}>
-            <input className="input" style={{ direction: 'ltr' }} value={f.managerPin} onChange={(e) => setF({ ...f, managerPin: e.target.value })} maxLength={6} />
-          </Field>
-        </Card>
-      </div>
-
-      <div className="row">
-        <button className="btn btn-gold" onClick={save}>💾 حفظ الإعدادات</button>
-      </div>
-
-      <Card title="النسخ الاحتياطي والاستعادة">
-        <div className="grid grid-3" style={{ gap: 10 }}>
-          <div className="card" style={{ background: 'var(--cream)' }}>
-            <div style={{ fontWeight: 800, fontSize: 13 }}>📤 نسخة احتياطية يدوية</div>
-            <p className="small muted" style={{ margin: '6px 0 10px' }}>ملف JSON يحتوي كل البيانات، يمكن حفظه على الجهاز أو رفعه إلى Google Drive.</p>
-            <button className="btn btn-brown btn-sm" onClick={() => { exportBackup(); onToast?.('تم إنشاء النسخة الاحتياطية') }}>تنزيل النسخة</button>
-          </div>
-          <div className="card" style={{ background: 'var(--cream)' }}>
-            <div style={{ fontWeight: 800, fontSize: 13 }}>📥 استعادة</div>
-            <p className="small muted" style={{ margin: '6px 0 10px' }}>اختر ملف النسخة الاحتياطية لاستعادة البيانات.</p>
-            <input ref={fileRef} type="file" accept="application/json" style={{ display: 'none' }}
-              onChange={async (e) => {
-                const file = e.target.files[0]
-                if (!file) return
-                try { importBackup(await file.text()); onToast?.('تمت استعادة البيانات') }
-                catch (err) { onToast?.('ملف غير صالح') }
-              }} />
-            <button className="btn btn-outline btn-sm" onClick={() => fileRef.current?.click()}>اختيار ملف</button>
-          </div>
-          <div className="card" style={{ background: 'var(--cream)' }}>
-            <div style={{ fontWeight: 800, fontSize: 13 }}>🔄 نسخ تلقائي</div>
-            <p className="small muted" style={{ margin: '6px 0 10px' }}>آخر نسخة: {s.settings.lastBackup ? fmtDateTime(s.settings.lastBackup) : 'لا يوجد'}</p>
-            <div className="row" style={{ justifyContent: 'space-between' }}>
-              <span className="small">مفعّل</span>
-              <Toggle on={f.autoBackup} onChange={(v) => { setF({ ...f, autoBackup: v }); updateSettings({ autoBackup: v }) }} />
+      {tab === 'shop' && (
+        <div className="grid" style={{ gridTemplateColumns: 'minmax(0,1.4fr) minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
+          <Card title="بيانات المحل" icon="bank" subtitle="تظهر في أعلى كل شاشة وعلى كل فاتورة وإيصال">
+            <div className="grid g2" style={{ gap: 10 }}>
+              <Field label="اسم المحل" required><input className="input" value={form.shopName} onChange={(e) => setForm({ ...form, shopName: e.target.value })} /></Field>
+              <Field label="الفرع"><input className="input" value={form.branch} onChange={(e) => setForm({ ...form, branch: e.target.value })} /></Field>
+              <Field label="الهاتف"><input className="input" style={{ direction: 'ltr' }} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
+              <Field label="العنوان"><input className="input" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></Field>
             </div>
-          </div>
-        </div>
-        <div className="sep" />
-        <p className="small muted">
-          في تطبيق أندرويد يتم النسخ التلقائي يومياً إلى مساحة التطبيق مع إمكانية التصدير إلى ملف على الجوال أو مشاركته مع Google Drive.
-        </p>
-      </Card>
+            <Field label="عبارة أسفل الفاتورة" style={{ marginTop: 10 }}><input className="input" value={form.invoiceFooter} onChange={(e) => setForm({ ...form, invoiceFooter: e.target.value })} /></Field>
+            <button className="btn btn-gold" style={{ marginTop: 12 }} onClick={saveShop}><Icon name="save" />حفظ البيانات</button>
+          </Card>
 
-      {isManager && (
-        <Card title="منطقة الخطر">
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 13 }}>إعادة البيانات التجريبية</div>
-              <div className="small muted">يمسح كل التعديلات ويعيد البيانات الافتراضية</div>
+          <Card title="معاينة الهوية" icon="star">
+            <div style={{ background: 'linear-gradient(150deg,#332317,#1E140E)', borderRadius: 14, padding: 20, color: '#F9F0E0', textAlign: 'center' }}>
+              <BrandMark size={60} style={{ margin: '0 auto' }} />
+              <div style={{ fontFamily: 'Amiri,serif', fontSize: 25, marginTop: 8 }}>{form.shopName || 'محامص الحرمين'}</div>
+              <div className="tiny" style={{ letterSpacing: 2.4, color: 'rgba(227,196,124,.65)', marginTop: 2 }}>MAHAMESS AL HARAMAYN</div>
+              <div className="tiny" style={{ color: 'rgba(249,240,224,.5)', marginTop: 8 }}>{form.branch} · {form.phone}</div>
+              <div className="tiny" style={{ color: 'rgba(249,240,224,.4)' }}>{form.address}</div>
             </div>
-            <button className="btn btn-outline btn-sm" onClick={() => { if (confirm('إعادة تعيين كل البيانات إلى الوضع التجريبي؟')) { resetDemo(); onToast?.('تمت إعادة التعيين') } }}>إعادة تعيين</button>
-          </div>
-        </Card>
+            <div className="tiny muted" style={{ marginTop: 10, lineHeight: 1.8 }}>الاسم والفرع يظهران في الشريط الجانبي وأعلى الشاشات، وعلى رأس الفاتورة المطبوعة والصورة والواتساب.</div>
+          </Card>
+        </div>
       )}
 
-      <Card title="عن التطبيق">
-        <div className="row" style={{ justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontWeight: 800 }}>محامص الحرمين — إدارة الفواتير والحسابات</div>
-            <div className="small muted">الإصدار 1.0.0 • يعمل بدون إنترنت • بيانات محلية مشفّرة على الجهاز</div>
-          </div>
-          <span className="badge badge-gold">أندرويد 8+</span>
+      {tab === 'ops' && (
+        <div className="grid" style={{ gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
+          <Card title="إعدادات التشغيل" icon="sliders">
+            <div className="stack">
+              <div className="grid g2" style={{ gap: 10 }}>
+                <Field label="وزن الأوقية (غرام)" hint="يُستخدم في تحويل الأوقية إلى غرام">
+                  <input className="input" inputMode="numeric" value={form.ozGrams} onChange={(e) => setForm({ ...form, ozGrams: e.target.value })} />
+                </Field>
+                <Field label="العملة الافتراضية للفواتير">
+                  <select className="select" value={form.defaultCurrency} onChange={(e) => setForm({ ...form, defaultCurrency: e.target.value })}>
+                    <option value="SYP">ليرة سورية</option><option value="USD">دولار أمريكي</option>
+                  </select>
+                </Field>
+              </div>
+              <div className="sep" />
+              <div className="row between">
+                <div><div style={{ fontSize: 12.5, fontWeight: 700 }}>سعر صرف الدولار</div><div className="tiny muted">يُسجَّل مع كل فاتورة جديدة</div></div>
+                <div className="row" style={{ gap: 6 }}>
+                  <input className="input" inputMode="decimal" value={rateInput} onChange={(e) => setRateInput(e.target.value)} style={{ width: 120, direction: 'ltr', textAlign: 'right', height: 36 }} />
+                  <button className="btn btn-gold btn-sm" onClick={() => { const n = Number(rateInput); if (n > 0) { setRate(n); onToast?.('تم تحديث السعر') } else onToast?.('سعر غير صالح', 'error') }}>تحديث</button>
+                </div>
+              </div>
+              <div className="sep" />
+              <div className="row between">
+                <div><div style={{ fontSize: 12.5, fontWeight: 700 }}>الوضع الداكن</div><div className="tiny muted">مريح للعمل الليلي</div></div>
+                <Toggle on={s.settings.theme === 'dark'} onChange={() => setTheme(s.settings.theme === 'dark' ? 'light' : 'dark')} />
+              </div>
+              <div className="row between">
+                <div><div style={{ fontSize: 12.5, fontWeight: 700 }}>قفل التطبيق برقم سري</div><div className="tiny muted">يُطلب PIN عند كل فتح للتطبيق</div></div>
+                <Toggle on={!!s.settings.pinEnabled} onChange={(v) => { updateSettings({ pinEnabled: v }); onToast?.(v ? 'تم تفعيل القفل' : 'تم تعطيل القفل') }} />
+              </div>
+              <button className="btn btn-gold" style={{ marginTop: 4 }} onClick={saveShop}><Icon name="save" />حفظ إعدادات التشغيل</button>
+            </div>
+          </Card>
+
+          <Card title="معلومات النظام" icon="info">
+            <div className="stack">
+              <div className="row between"><span className="small muted">الإصدار</span><b className="small">2.0.0 Pro</b></div>
+              <div className="row between"><span className="small muted">قاعدة البيانات</span><b className="small">محلية (بدون إنترنت)</b></div>
+              <div className="row between"><span className="small muted">حجم البيانات</span><b className="small">{storageSize} ك.ب</b></div>
+              <div className="row between"><span className="small muted">عدد الأصناف</span><b className="small">{s.items.length}</b></div>
+              <div className="row between"><span className="small muted">عدد الفواتير</span><b className="small">{s.invoices.length}</b></div>
+              <div className="row between"><span className="small muted">آخر نسخة احتياطية</span><b className="small">{s.settings.lastBackup ? new Date(s.settings.lastBackup).toLocaleDateString('ar-SY') : 'لم تُنشأ بعد'}</b></div>
+              <div className="sep" />
+              <div className="tiny muted" style={{ lineHeight: 1.9 }}>كل المبالغ تُخزَّن كأعداد صحيحة (بدون أخطاء Float)، وكل فاتورة تحتفظ بسعر صرفها وعملتها.</div>
+            </div>
+          </Card>
         </div>
-      </Card>
+      )}
+
+      {tab === 'security' && (
+        <div className="grid g2">
+          <Card title="الحماية" icon="shield">
+            <div className="stack">
+              <div className="row between"><div><div style={{ fontSize: 12.5, fontWeight: 700 }}>قفل التطبيق</div><div className="tiny muted">طلب رقم سري عند كل دخول</div></div><Toggle on={!!s.settings.pinEnabled} onChange={(v) => updateSettings({ pinEnabled: v })} /></div>
+              <div className="sep" />
+              <div className="row between"><div><div style={{ fontSize: 12.5, fontWeight: 700 }}>الوضع الداكن</div><div className="tiny muted">واجهة داكنة أنيقة</div></div><Toggle on={s.settings.theme === 'dark'} onChange={() => setTheme(s.settings.theme === 'dark' ? 'light' : 'dark')} /></div>
+              <div className="sep" />
+              <div className="tiny muted" style={{ lineHeight: 1.9 }}>لتغيير أرقام الدخول، انتقل إلى شاشة <b>المستخدمون والصلاحيات</b>. يُنصح بتغيير الرقم الافتراضي 1234 فور بدء الاستخدام.</div>
+              <button className="btn btn-ghost" style={{ marginTop: 4 }} onClick={() => onToast?.('يمكنك تغيير الأرقام من شاشة المستخدمين')}><Icon name="key" />إدارة أرقام الدخول</button>
+            </div>
+          </Card>
+          <Card title="التنبيهات الذكية" icon="bell">
+            <div className="stack">
+              <div className="row between"><div><div style={{ fontSize: 12.5, fontWeight: 700 }}>تنبيه المخزون المنخفض</div><div className="tiny muted">عند الوصول لحد التنبيه</div></div><Toggle on onChange={() => onToast?.('التنبيهات مفعّلة دائماً')} /></div>
+              <div className="row between"><div><div style={{ fontSize: 12.5, fontWeight: 700 }}>تنبيه الصلاحية</div><div className="tiny muted">قبل 30 يوماً من الانتهاء</div></div><Toggle on onChange={() => onToast?.('التنبيهات مفعّلة دائماً')} /></div>
+              <div className="row between"><div><div style={{ fontSize: 12.5, fontWeight: 700 }}>تنبيه الديون المتأخرة</div><div className="tiny muted">بعد 30 يوماً من آخر فاتورة</div></div><Toggle on onChange={() => onToast?.('التنبيهات مفعّلة دائماً')} /></div>
+              <div className="sep" />
+              <div className="tiny muted" style={{ lineHeight: 1.9 }}>تظهر التنبيهات في جرس الشريط العلوي وفي لوحة التحكم مع روابط مباشرة للإجراء.</div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {tab === 'backup' && (
+        <div className="grid" style={{ gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
+          <Card title="النسخ الاحتياطي والاستعادة" icon="database" subtitle="نسخة كاملة من المحل: الأصناف، الفواتير، الحسابات والإعدادات">
+            <div className="grid g2" style={{ gap: 10 }}>
+              <button className="btn btn-primary" style={{ height: 80, flexDirection: 'column', gap: 4 }} onClick={() => { exportBackup(); onToast?.('تم تنزيل النسخة الاحتياطية') }}>
+                <Icon name="download" size={22} /><span>تنزيل نسخة احتياطية</span><span className="tiny" style={{ opacity: .6, fontWeight: 500 }}>ملف JSON كامل</span>
+              </button>
+              <button className="btn btn-ghost" style={{ height: 80, flexDirection: 'column', gap: 4 }} onClick={() => fileRef.current?.click()}>
+                <Icon name="upload" size={22} /><span>استعادة نسخة</span><span className="tiny muted" style={{ fontWeight: 500 }}>سيُستبدل كل البيانات</span>
+              </button>
+            </div>
+            <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              const reader = new FileReader()
+              reader.onload = () => setImportData(String(reader.result))
+              reader.readAsText(file)
+              e.target.value = ''
+            }} />
+            <div className="sep" />
+            <div className="row between" style={{ marginBottom: 8 }}>
+              <span className="small muted">آخر نسخة احتياطية</span>
+              <span className="badge badge-neutral">{s.settings.lastBackup ? new Date(s.settings.lastBackup).toLocaleString('ar-SY') : 'لم تُنشأ بعد'}</span>
+            </div>
+            <div className="tiny muted" style={{ lineHeight: 1.9 }}>
+              احتفظ بنسخة أسبوعياً على الأقل. يمكن استعادة النسخة على نفس الجهاز أو جهاز آخر يعمل بنفس التطبيق.
+            </div>
+          </Card>
+
+          <Card title="منطقة الخطر" icon="alert">
+            <div className="stack">
+              <div className="card tight" style={{ background: 'var(--warn-soft)', borderColor: 'rgba(169,113,29,.22)' }}>
+                <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--warn)' }}>إعادة البيانات التجريبية</div>
+                <div className="tiny" style={{ color: 'var(--warn)', opacity: .85, marginTop: 3, lineHeight: 1.7 }}>تستبدل كل البيانات الحالية ببيانات تجريبية جاهزة للعرض.</div>
+                <button className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={() => setConfirm('demo')}>إعادة التهيئة التجريبية</button>
+              </div>
+              <div className="card tight" style={{ background: 'var(--danger-soft)', borderColor: 'rgba(178,59,59,.2)' }}>
+                <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--danger)' }}>حذف كل البيانات</div>
+                <div className="tiny" style={{ color: 'var(--danger)', opacity: .85, marginTop: 3, lineHeight: 1.7 }}>حذف نهائي لجميع الفواتير والحسابات مع الإبقاء على إعدادات المحل.</div>
+                <button className="btn btn-danger btn-sm" style={{ marginTop: 8 }} onClick={() => setConfirm('clear')}>حذف كل البيانات</button>
+              </div>
+              <div className="tiny muted">يُنصح بتنزيل نسخة احتياطية قبل أي عملية حذف.</div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      <ConfirmDialog open={confirm === 'demo'} onClose={() => setConfirm(null)} title="إعادة البيانات التجريبية" text="سيتم استبدال جميع البيانات الحالية ببيانات تجريبية. لا يمكن التراجع." confirmLabel="إعادة التهيئة" tone="primary" icon="rotate"
+        onConfirm={() => { resetDemo(); onToast?.('تمت إعادة البيانات التجريبية') }} />
+      <ConfirmDialog open={confirm === 'clear'} onClose={() => setConfirm(null)} title="حذف كل البيانات" text="سيتم حذف كل الفواتير والزبائن والأصناف والحسابات نهائياً. ننصح بتصدير نسخة احتياطية أولاً." confirmLabel="حذف نهائي" tone="danger"
+        onConfirm={() => { clearAll(); onToast?.('تم حذف جميع البيانات') }} />
+
+      {importData && (
+        <Modal open onClose={() => setImportData(null)} title="استعادة نسخة احتياطية" subtitle="راجع الملف قبل الاستبدال" icon="upload" size="sm"
+          footer={<>
+            <button className="btn btn-gold" onClick={() => doImport(importData)}>استعادة الآن</button>
+            <button className="btn btn-ghost" onClick={() => setImportData(null)}>إلغاء</button>
+          </>}>
+          <div className="stack">
+            <div className="row" style={{ background: 'var(--warn-soft)', padding: 10, borderRadius: 9, gap: 7 }}>
+              <Icon name="alert" size={16} style={{ color: 'var(--warn)' }} />
+              <span className="tiny" style={{ color: 'var(--warn)', fontWeight: 700 }}>سيتم استبدال كل البيانات الحالية بمحتوى الملف.</span>
+            </div>
+            <div className="card tight" style={{ background: 'var(--surface-2)' }}>
+              <div className="row between"><span className="tiny muted">حجم الملف</span><b className="tiny">{(importData.length / 1024).toFixed(1)} ك.ب</b></div>
+              <div className="row between" style={{ marginTop: 4 }}><span className="tiny muted">نوع الملف</span><b className="tiny">نسخة محامص الحرمين</b></div>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

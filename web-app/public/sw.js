@@ -1,5 +1,5 @@
 // عامل الخدمة: يعمل التطبيق بدون إنترنت بعد أول زيارة
-const CACHE = 'mahamess-v1'
+const CACHE = 'mahamess-v2'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

@@ -155,8 +155,15 @@ export function fmtBaseQty(baseQty, unitKind) {
 }
 
 // ---------- التواريخ ----------
-export const todayISO = () => new Date().toISOString().slice(0, 10)
+const localISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+export const todayISO = () => localISO(new Date())
 export const nowISO = () => new Date().toISOString()
+export const dayOffset = (n = 0) => { const d = new Date(); d.setDate(d.getDate() - n); return localISO(d) }
+export const prettyDate = (iso) => {
+  if (!iso) return ''
+  const d = new Date(String(iso).length <= 10 ? iso + 'T00:00:00' : iso)
+  return isNaN(d) ? iso : d.toLocaleDateString('ar-SY', { weekday: 'short', day: 'numeric', month: 'short' })
+}
 
 export function fmtDate(iso) {
   if (!iso) return ''
@@ -199,3 +206,43 @@ export function normalizeAr(s) {
     .trim()
     .toLowerCase()
 }
+
+
+// ---------- تصدير ----------
+export const hasAndroidBridge = () => typeof window !== 'undefined' && !!window.AndroidApp
+
+const blobToBase64 = (blob) => new Promise((resolve, reject) => {
+  const r = new FileReader()
+  r.onload = () => resolve(String(r.result).split(',')[1] || '')
+  r.onerror = reject
+  r.readAsDataURL(blob)
+})
+
+export async function saveBlob(blob, filename) {
+  if (window.AndroidApp?.saveBase64) {
+    try {
+      const b64 = await blobToBase64(blob)
+      window.AndroidApp.saveBase64(filename, b64, blob.type || 'application/octet-stream')
+      return true
+    } catch { /* fallback */ }
+  }
+  return false
+}
+
+export function downloadCSV(filename, rows) {
+  const csv = rows.map((r) => r.map((cell) => {
+    const v = cell === null || cell === undefined ? '' : String(cell)
+    return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
+  }).join(',')).join('\r\n')
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+  if (window.AndroidApp?.saveBase64) { saveBlob(blob, filename); return }
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1500)
+}
+
+export function printPage() { window.print() }
