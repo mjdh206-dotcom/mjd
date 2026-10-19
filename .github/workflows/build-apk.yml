@@ -1,0 +1,87 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [arena/*]
+    paths:
+      - 'android/**'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: android
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configure Android SDK (preinstalled on runner)
+        run: |
+          echo "SDK root: $ANDROID_SDK_ROOT"
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          ls "$ANDROID_SDK_ROOT/platforms" || true
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" > /dev/null 2>&1 || true
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Generate signing keystore (first run only)
+        run: |
+          mkdir -p app/keystore
+          if [ ! -f app/keystore/haramayn.jks ]; then
+            keytool -genkeypair -v \
+              -keystore app/keystore/haramayn.jks \
+              -alias haramayn -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass haramayn2026 -keypass haramayn2026 \
+              -dname "CN=Mahamess Alharamayn, OU=Shop, O=Mahamess, L=Damascus, C=SY"
+          fi
+
+      - name: Build & test (full log saved)
+        run: |
+          set -o pipefail
+          gradle :app:testDebugUnitTest :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee ../build.log
+
+      - name: Collect artifacts
+        if: always()
+        run: |
+          mkdir -p ../dist
+          find app/build/outputs/apk -name "*.apk" -exec cp {} ../dist/mahamess-alharamayn-1.0.0.apk \; || true
+          cp app/keystore/haramayn.jks ../dist/mahamess-keystore.jks || true
+          cp ../build.log ../dist/build.log || true
+          ls -lh ../dist || true
+
+      - name: Upload APK artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mahamess-apk
+          path: dist/
+          retention-days: 30
+
+      - name: Publish results to build-artifacts branch
+        if: always()
+        run: |
+          cd ..
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan build-artifacts-tmp || true
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          git add -f dist/
+          git commit -m "build #${GITHUB_RUN_NUMBER} (${GITHUB_SHA:0:7})" || true
+          git branch -f build-artifacts HEAD
+          git push -f origin build-artifacts
