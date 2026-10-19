@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useStore, updatePrices } from '../store'
-import { CATEGORIES, UNITS, money, parseAmount, normalizeAr } from '../utils'
+import { CATEGORIES, UNITS, money, parseAmount, normalizeAr, downloadCSV, fmtDate, todayISO, openPrintWindow } from '../utils'
 import { Card, PageHead, Kpi, Modal, Field, Empty } from '../components'
 import { Icon, categoryIcon } from '../icons'
 
@@ -49,6 +49,43 @@ export default function Pricing({ onToast, go }) {
     setDraft((d) => ({ ...d, [it.id]: { ...(d[it.id] || {}), [key]: clean } }))
   }
 
+  const exportCSV = () => {
+    const rows = [['الصنف', 'التصنيف', 'الوحدة', 'التكلفة', 'المفرق', 'الجملة', 'الهامش %']]
+    items.forEach((i) => {
+      const d = draft[i.id] || {}
+      const retail = Number(d.retail ?? i.retail) || 0
+      const cost = Number(d.cost ?? i.cost) || 0
+      rows.push([i.name, CATEGORIES.find((c) => c.id === i.category)?.name || '', UNITS[i.unit]?.name || '', cost, retail, Number(d.wholesale ?? i.wholesale) || 0, retail > 0 ? Math.round(((retail - cost) / retail) * 100) : 0])
+    })
+    downloadCSV(`قائمة-الأسعار-${todayISO()}.csv`, rows)
+    onToast?.('تم تصدير قائمة الأسعار (CSV)')
+  }
+
+  const printList = () => {
+    const groups = CATEGORIES.map((c) => ({ ...c, list: items.filter((i) => i.category === c.id && (draft[i.id]?.retail ?? i.retail) > 0) })).filter((g) => g.list.length)
+    const rows = groups.map((g) => `
+      <h2>${g.name}</h2>
+      <table><thead><tr><th>الصنف</th><th>الوحدة</th><th>المفرق</th><th>الجملة</th></tr></thead><tbody>
+      ${g.list.map((i) => `<tr><td>${i.name}</td><td>${UNITS[i.unit]?.name || ''}</td><td>${money(Number(draft[i.id]?.retail ?? i.retail), 'SYP')}</td><td>${money(Number(draft[i.id]?.wholesale ?? i.wholesale) || 0, 'SYP')}</td></tr>`).join('')}
+      </tbody></table>`).join('')
+    const html = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>قائمة الأسعار</title>
+      <style>
+      body{font-family:Tahoma,Arial,sans-serif;color:#2b1c12;padding:24px;font-size:12px}
+      .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #c2983f;padding-bottom:10px;margin-bottom:14px}
+      h1{font-size:24px;margin:0}h2{font-size:14px;margin:16px 0 6px;color:#8c6724;border-right:3px solid #c2983f;padding-right:6px}
+      .muted{color:#8b7967;font-size:10px}
+      table{width:100%;border-collapse:collapse;font-size:10.5px}th{background:#f6f0e4;text-align:right;padding:6px;border-bottom:1px solid #d8cbb4;font-size:9.5px;color:#8b7967}
+      td{padding:5px 6px;border-bottom:1px dashed #eee}td:first-child{font-weight:bold}
+      th:not(:first-child),td:not(:first-child){text-align:left;direction:ltr}
+      .foot{text-align:center;color:#8b7967;font-size:9px;margin-top:20px;border-top:1px dashed #ddd;padding-top:8px}
+      </style></head><body>
+      <div class="head"><div><h1>${s.settings.shopName}</h1><div class="muted">${s.settings.branch || ''} ${s.settings.phone ? '· ' + s.settings.phone : ''}</div></div>
+      <div class="muted" style="text-align:left">قائمة الأسعار<br>${fmtDate(todayISO())}</div></div>
+      ${rows || '<p class="muted">لا توجد أصناف مسعّرة بعد.</p>'}
+      <div class="foot">الأسعار بالليرة السورية · ${s.settings.shopName}</div></body></html>`
+    if (!openPrintWindow(html)) onToast?.('تعذر فتح نافذة الطباعة', 'error')
+  }
+
   const save = () => {
     if (!changed.length) return onToast?.('لا توجد تعديلات لحفظها', 'error')
     const entries = changed.map((id) => {
@@ -88,6 +125,8 @@ export default function Pricing({ onToast, go }) {
         title="التسعير السريع"
         subtitle="حدّد أسعار كل الأصناف في جدول واحد — كل الأسعار تبدأ صفراً حتى تسعّرها"
         actions={<>
+          <button className="btn btn-ghost" onClick={printList}><Icon name="printer" />قائمة الأسعار</button>
+          <button className="btn btn-ghost" onClick={exportCSV}><Icon name="download" />Excel</button>
           <button className="btn btn-ghost" onClick={() => setMarginOpen(true)}><Icon name="percent" />تسعير بهامش</button>
           <button className="btn btn-gold" onClick={save} disabled={!changed.length}><Icon name="save" />حفظ الكل{changed.length ? ` (${changed.length})` : ''}</button>
         </>}
