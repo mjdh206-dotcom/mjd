@@ -1,0 +1,80 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [arena/*]
+    paths:
+      - 'android/**'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: android
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Generate signing keystore (first run only)
+        run: |
+          mkdir -p app/keystore
+          if [ ! -f app/keystore/haramayn.jks ]; then
+            keytool -genkeypair -v \
+              -keystore app/keystore/haramayn.jks \
+              -alias haramayn -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass haramayn2026 -keypass haramayn2026 \
+              -dname "CN=Mahamess Alharamayn, OU=Shop, O=Mahamess, L=Damascus, C=SY"
+          fi
+
+      - name: Run unit tests
+        run: gradle :app:testDebugUnitTest --no-daemon --stacktrace
+
+      - name: Build Release APK
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p ../dist
+          find app/build/outputs/apk -name "*.apk" -exec cp {} ../dist/mahamess-alharamayn-1.0.0.apk \;
+          cp app/keystore/haramayn.jks ../dist/mahamess-keystore.jks
+          ls -lh ../dist
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mahamess-apk
+          path: dist/mahamess-alharamayn-1.0.0.apk
+          retention-days: 30
+
+      - name: Publish APK to build-artifacts branch
+        if: success()
+        run: |
+          cd ..
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan build-artifacts-tmp
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          git add -f dist/
+          git commit -m "APK build #${GITHUB_RUN_NUMBER} from ${GITHUB_SHA:0:7}"
+          git branch -f build-artifacts HEAD
+          git push -f origin build-artifacts

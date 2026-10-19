@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- coffee cup -->
+    <path
+        android:fillColor="#D4A017"
+        android:pathData="M34,42 L74,42 L70,74 A12,12 0 0 1 58,84 L50,84 A12,12 0 0 1 38,74 Z" />
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M74,48 L80,48 A8,8 0 0 1 80,64 L73,64 L72,56 L77,56 A3,3 0 0 0 77,50 L73,50 Z" />
+    <!-- steam -->
+    <path
+        android:strokeColor="#FFD54F"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M46,36 C46,30 50,30 50,24" />
+    <path
+        android:strokeColor="#FFECB3"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M56,36 C56,30 60,30 60,24" />
+    <path
+        android:strokeColor="#FFD54F"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M66,36 C66,30 70,30 70,24" />
+</vector>
