@@ -23,6 +23,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.core.view.WindowCompat
+import androidx.webkit.WebViewAssetLoader
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Locale
@@ -40,6 +41,13 @@ class MainActivity : Activity() {
     private lateinit var web: WebView
     private var pendingSpeech = false
     private var fileCallback: ValueCallback<Array<Uri>>? = null
+
+    // تقديم حزمة الويب عبر أصل https آمن بدل file:// — يضمن عمل وحدات ES والتخزين المحلي.
+    private val assetLoader by lazy {
+        WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,13 +77,11 @@ class MainActivity : Activity() {
                     return openExternally(url)
                 }
 
-                // ملفات محلية: تضمن أن أي مسار مطلق يعمل داخل التطبيق ولا يكسر الحزمة.
+                // تقديم ملفات الحزمة من داخل التطبيق عبر أصل https آمن.
                 override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
                     val url = request?.url ?: return null
-                    if (url.scheme == "https" && url.host == "localhost") {
-                        val path = url.path?.removePrefix("/") ?: return null
-                        val stream = runCatching { assets.open("www/$path") }.getOrNull() ?: return null
-                        return WebResourceResponse(mimeOf(path), "UTF-8", stream)
+                    if (url.host == "appassets.androidplatform.net") {
+                        return assetLoader.shouldInterceptRequest(url)
                     }
                     return null
                 }
@@ -108,7 +114,7 @@ class MainActivity : Activity() {
                 }
             }
             addJavascriptInterface(Bridge(), "AndroidApp")
-            loadUrl("file:///android_asset/www/index.html")
+            loadUrl("https://appassets.androidplatform.net/assets/www/index.html")
         }
 
         val lp = android.view.ViewGroup.LayoutParams(
@@ -138,7 +144,7 @@ class MainActivity : Activity() {
     private fun openExternally(url: String): Boolean {
         if (url.startsWith("file://") || url.startsWith("about:") || url.startsWith("blob:")) return false
         val host = Uri.parse(url).host ?: return false
-        if (host == "localhost") return false
+        if (host == "localhost" || host == "appassets.androidplatform.net") return false
         return try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -225,7 +231,7 @@ class MainActivity : Activity() {
             runOnUiThread {
                 val printer = WebView(this@MainActivity)
                 printer.settings.javaScriptEnabled = true
-                printer.loadDataWithBaseURL("file:///android_asset/www/", html, "text/html", "UTF-8", null)
+                printer.loadDataWithBaseURL("https://appassets.androidplatform.net/assets/www/", html, "text/html", "UTF-8", null)
                 printer.webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView, url: String) {
                         val manager = getSystemService(PRINT_SERVICE) as PrintManager
