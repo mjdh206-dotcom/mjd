@@ -96,8 +96,8 @@ export default function Reports({ onToast }) {
           <Field label="إلى تاريخ"><input type="date" className="input" value={range[1]} onChange={(e) => { setTab('custom'); setTo(e.target.value) }} /></Field>
           <Field label="العرض بعملة">
             <select className="select" value={display} onChange={(e) => setDisplay(e.target.value)}>
-              <option value="SYP">ليرة سورية</option>
-              <option value="USD">دولار أمريكي</option>
+              <option value="SYP">ليرة سورية (مجموع مقدّر)</option>
+              <option value="USD">دولار أمريكي (مجموع مقدّر)</option>
               <option value="MIX">كل عملة على حدة</option>
             </select>
           </Field>

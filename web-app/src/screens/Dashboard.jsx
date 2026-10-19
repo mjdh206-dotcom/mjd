@@ -28,6 +28,16 @@ export default function Dashboard({ go, onToast }) {
 
   const low = lowStockItems()
   const exp = expiringItems(30)
+
+  // ديون متأخرة: رصيد قائم على زبون ولم يشترِ منذ 30 يوماً
+  const overdue = useMemo(() => {
+    const todayMs = new Date(todayISO() + 'T00:00:00').getTime()
+    return s.customers.filter((c) => c.id !== 'cash').map((c) => {
+      const st = partyStats(c.id, 'customer')
+      const days = st.lastInvoice ? Math.round((todayMs - new Date(st.lastInvoice.date + 'T00:00:00').getTime()) / 86400000) : 999
+      return { customer: c, balance: st.balances, days }
+    }).filter((r) => (r.balance.SYP > 0 || r.balance.USD > 0) && r.days >= 30)
+  }, [s, today])
   const cashSYP = cashFlow('SYP', today, today)
   const cashUSD = cashFlow('USD', today, today)
   const recent = s.invoices.filter((i) => i.type === 'sale').sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).slice(0, 6)
@@ -119,6 +129,25 @@ export default function Dashboard({ go, onToast }) {
           })}
           <button className="btn btn-outline btn-sm" style={{ marginTop: 10 }} onClick={() => go('inventory')}>عرض المخزون</button>
         </Card>
+
+        {/* ديون متأخرة */}
+        {overdue.length > 0 && (
+          <Card title="تذكير بالديون المتأخرة" badge={overdue.length}>
+            {overdue.map(({ customer, balance, days }) => (
+              <div key={customer.id} className="row" style={{ justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{customer.name}</div>
+                  <div className="small muted">آخر فاتورة قبل {days} يوم</div>
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  {balance.SYP > 0 && <div className="small" style={{ direction: 'ltr', fontWeight: 700 }}>{money(balance.SYP, 'SYP')}</div>}
+                  {balance.USD > 0 && <div className="small" style={{ direction: 'ltr', fontWeight: 700 }}>{money(balance.USD, 'USD')}</div>}
+                </div>
+              </div>
+            ))}
+            <button className="btn btn-outline btn-sm" style={{ marginTop: 10 }} onClick={() => go('customers')}>فتح الزبائن</button>
+          </Card>
+        )}
 
         {/* آخر الفواتير */}
         <Card title="آخر الفواتير" action={<button className="btn btn-outline btn-sm" onClick={() => go('sales')}>الكل</button>}>

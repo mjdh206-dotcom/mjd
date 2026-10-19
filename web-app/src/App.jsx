@@ -79,6 +79,8 @@ export default function App() {
 
   const session = state.session
   const isManager = session?.role === 'manager'
+  const WORKER_ALLOWED = ['dashboard', 'sale-new', 'sales', 'items', 'customers']
+  const visible = (id) => isManager || WORKER_ALLOWED.includes(id)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', state.settings.theme === 'dark')
@@ -156,7 +158,7 @@ export default function App() {
           {NAV.map((g) => (
             <div className="nav-group" key={g.group}>
               <div className="nav-group-title">{g.group}</div>
-              {g.items.map((it) => (
+              {g.items.filter((it) => visible(it.id)).map((it) => (
                 <button key={it.id} className={`nav-item ${page.name === it.id ? 'active' : ''}`} onClick={() => go(it.id)}>
                   <span className="ico">{it.icon}</span>{it.label}
                 </button>
@@ -180,14 +182,16 @@ export default function App() {
       </div>
 
       <nav className="bottom-nav">
-        {MOBILE_NAV.map((it) => (
+        {MOBILE_NAV.filter((it) => visible(it.id)).map((it) => (
           <button key={it.id} className={`bnav-item ${page.name === it.id ? 'active' : ''}`} onClick={() => go(it.id)}>
             <span className="ico">{it.icon}</span>{it.label}
           </button>
         ))}
-        <button className="bnav-item" onClick={() => go('settings')}>
-          <span className="ico">⚙️</span>الإعدادات
-        </button>
+        {isManager && (
+          <button className="bnav-item" onClick={() => go('settings')}>
+            <span className="ico">⚙️</span>الإعدادات
+          </button>
+        )}
       </nav>
 
       <Modal open={rateOpen} onClose={() => setRateOpen(false)} title="تحديث سعر صرف الدولار"

@@ -6,7 +6,8 @@
 
 | النسخة | المسار | الحالة |
 |---|---|---|
-| تطبيق أندرويد أصلي (Kotlin + Jetpack Compose + Room) | `android/` | يُبنى APK آلياً عبر GitHub Actions |
+| **ملف APK جاهز للتثبيت** | `release/mahamess-alharamayn-1.0.0.apk` | موقّع وجاهز (6.6 MB) |
+| تطبيق أندرويد أصلي (Kotlin + Jetpack Compose + Room) | `android/` | كود مصدري كامل يُبنى آلياً عبر GitHub Actions |
 | تطبيق ويب/PWA مطابق للواجهة والمنطق | `web-app/` | يعمل مباشرة في المتصفح ويثبَّت على الجوال |
 
 > اسم **«محامص الحرمين»** ظاهر في الشريط العلوي لكل شاشة، وفي رأس كل فاتورة PDF، وعلى إيصال الطابعة الحرارية.
@@ -118,7 +119,12 @@ gradle :app:assembleRelease     # أو: ./gradlew بعد توليد الـwrappe
 ```
 أو افتح مجلد `android/` مباشرة في Android Studio.
 
-بيانات التوقيع الافتراضية موثّقة داخل الـworkflow (`haramayn` / `haramayn2026`) — **يُنصح بتغييرها** قبل النشر على Google Play والحفاظ على ملف المفتاح.
+مفتاح التوقيع محفوظ في `android/app/keystore/haramayn.jks` (كلمة السر `haramayn2026`، الاسم المستعار `haramayn`) لضمان قبول التحديثات فوق النسخة المثبتة. **غيّره واحفظه في مكان آمن قبل النشر على Google Play.**
+
+### الملف الجاهز في هذا المستودع
+- `release/mahamess-alharamayn-1.0.0.apk`
+- بصمة SHA-256: `27b09824cd4ab2105650e2368b227324e7ffb6a08e5ed99bf56dfcd14aa7130f`
+- يُحدَّث الملف تلقائياً على فرع `build-artifacts` عند كل تعديل على `android/`.
 
 ### التثبيت
 1. انقل ملف APK إلى الهاتف.
