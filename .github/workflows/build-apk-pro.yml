@@ -51,6 +51,17 @@ jobs:
           yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
           "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" > /dev/null 2>&1 || true
 
+      - name: Ensure signing keystore
+        run: |
+          mkdir -p android/app/keystore
+          if [ ! -f android/app/keystore/haramayn.jks ]; then
+            keytool -genkeypair -v \
+              -keystore android/app/keystore/haramayn.jks \
+              -alias haramayn -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass haramayn2026 -keypass haramayn2026 \
+              -dname "CN=Mahamess Alharamayn, OU=Shop, O=Mahamess, L=Damascus, C=SY"
+          fi
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
