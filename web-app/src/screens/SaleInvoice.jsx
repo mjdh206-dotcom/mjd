@@ -23,9 +23,13 @@ export default function SaleInvoice({ go, onToast, editId, onDone }) {
   const [discountValue, setDiscountValue] = useState(
     editing ? (editing.discountType === 'percent' ? editing.discountValue : editing.discountValue / Math.pow(10, CURRENCIES[editing.currency].decimals)) : 0,
   )
-  const [payMode, setPayMode] = useState('cash')
-  const [payCurrency, setPayCurrency] = useState(editing?.currency || s.settings.defaultCurrency || 'SYP')
-  const [paidInput, setPaidInput] = useState('')
+  const [payMode, setPayMode] = useState(editing?.paidMethod || 'cash')
+  const [payCurrency, setPayCurrency] = useState(editing?.paidCurrency || editing?.currency || s.settings.defaultCurrency || 'SYP')
+  const [paidInput, setPaidInput] = useState(
+    editing && editing.paidMethod === 'partial'
+      ? String((editing.paidForeign || editing.paid) / Math.pow(10, CURRENCIES[editing.paidCurrency || editing.currency].decimals))
+      : '',
+  )
   const [notes, setNotes] = useState(editing?.notes || '')
   const [search, setSearch] = useState('')
   const [pickerItem, setPickerItem] = useState(null)
@@ -289,8 +293,15 @@ export default function SaleInvoice({ go, onToast, editId, onDone }) {
                         <td>
                           <select className="select" style={{ width: 90, padding: '6px 8px' }} value={l.unit}
                             onChange={(e) => updateLine(idx, { unit: e.target.value })}>
-                            <option value="kg">كيلو</option><option value="g">غرام</option><option value="oz">أوقية</option>
-                            <option value="piece">قطعة</option>
+                            {s.items.find((it) => it.id === l.itemId)?.unit === 'piece' ? (
+                              <option value="piece">قطعة</option>
+                            ) : (
+                              <>
+                                <option value="kg">كيلو</option>
+                                <option value="g">غرام</option>
+                                <option value="oz">أوقية</option>
+                              </>
+                            )}
                           </select>
                         </td>
                         <td>

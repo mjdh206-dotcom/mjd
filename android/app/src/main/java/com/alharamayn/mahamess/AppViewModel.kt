@@ -71,7 +71,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun login(pin: String) {
         viewModelScope.launch {
-            val user = repo.verifyPin(pin)
+            var user = repo.verifyPin(pin)
+            // حماية من محاولة الدخول قبل اكتمال التهيئة الأولى
+            if (user == null && repo.dao.dumpUsers().isEmpty()) {
+                repo.seedIfNeeded()
+                user = repo.verifyPin(pin)
+            }
             if (user != null) _session.value = user else notify("الرقم السري غير صحيح")
         }
     }
