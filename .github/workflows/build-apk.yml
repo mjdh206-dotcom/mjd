@@ -51,35 +51,37 @@ jobs:
               -dname "CN=Mahamess Alharamayn, OU=Shop, O=Mahamess, L=Damascus, C=SY"
           fi
 
-      - name: Run unit tests
-        run: gradle :app:testDebugUnitTest --no-daemon --stacktrace
-
-      - name: Build Release APK
-        run: gradle :app:assembleRelease --no-daemon --stacktrace
+      - name: Build & test (full log saved)
+        run: |
+          set -o pipefail
+          gradle :app:testDebugUnitTest :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee ../build.log
 
       - name: Collect artifacts
+        if: always()
         run: |
           mkdir -p ../dist
-          find app/build/outputs/apk -name "*.apk" -exec cp {} ../dist/mahamess-alharamayn-1.0.0.apk \;
-          cp app/keystore/haramayn.jks ../dist/mahamess-keystore.jks
-          ls -lh ../dist
+          find app/build/outputs/apk -name "*.apk" -exec cp {} ../dist/mahamess-alharamayn-1.0.0.apk \; || true
+          cp app/keystore/haramayn.jks ../dist/mahamess-keystore.jks || true
+          cp ../build.log ../dist/build.log || true
+          ls -lh ../dist || true
 
       - name: Upload APK artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mahamess-apk
-          path: dist/mahamess-alharamayn-1.0.0.apk
+          path: dist/
           retention-days: 30
 
-      - name: Publish APK to build-artifacts branch
-        if: success()
+      - name: Publish results to build-artifacts branch
+        if: always()
         run: |
           cd ..
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout --orphan build-artifacts-tmp
+          git checkout --orphan build-artifacts-tmp || true
           git rm -rf --cached . >/dev/null 2>&1 || true
           git add -f dist/
-          git commit -m "APK build #${GITHUB_RUN_NUMBER} from ${GITHUB_SHA:0:7}"
+          git commit -m "build #${GITHUB_RUN_NUMBER} (${GITHUB_SHA:0:7})" || true
           git branch -f build-artifacts HEAD
           git push -f origin build-artifacts
