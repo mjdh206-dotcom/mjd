@@ -16,10 +16,12 @@ export const UNITS = {
 }
 
 export const CATEGORIES = [
-  { id: 'nuts', name: 'مكسرات', icon: '🥜' },
-  { id: 'hospitality', name: 'ضيافة', icon: '🍽️' },
-  { id: 'candy', name: 'كاندي', icon: '🍬' },
-  { id: 'coffee', name: 'قهوة', icon: '☕' },
+  { id: 'nuts', name: 'مكسرات', icon: 'peanut' },
+  { id: 'seeds', name: 'بزور', icon: 'seed' },
+  { id: 'dried', name: 'مجففات', icon: 'grape' },
+  { id: 'coffee', name: 'قهوة وبن', icon: 'coffee' },
+  { id: 'candy', name: 'كاندي وشوكولا', icon: 'candy' },
+  { id: 'hospitality', name: 'ضيافة وسلال', icon: 'gift' },
 ]
 
 export const ROLE = { MANAGER: 'manager', WORKER: 'worker' }

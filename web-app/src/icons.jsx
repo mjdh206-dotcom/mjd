@@ -62,6 +62,8 @@ const P = {
   candy: <><circle cx="12" cy="12" r="4.2" /><path d="M8.3 9.5 4 7.5l1 4-1 4 4.3-2M15.7 9.5 20 7.5l-1 4 1 4-4.3-2" /></>,
   peanut: <><path d="M8.3 14.5c-2.2-2.2-3.2-4-2.4-6.1.7-1.8 2.8-2.7 4.6-2 .9.4 1.5 1.1 2.3 1.9 1.6 1.6 2.4 1.2 3.3 2.3 1.4 1.7 1 4.4-.8 5.8-1.9 1.5-4.7 1.4-7-.2-1-.7-1.7-1-2-1.7Z" /><path d="M9.5 12.5c1-.4 2-1.2 2.7-2.3" /></>,
   gift: <><rect x="3" y="8.5" width="18" height="4.5" rx="1" /><path d="M4.5 13v8h15v-8M12 8.5V21" /><path d="M12 8.5C10 8.5 7.5 7.8 7.5 5.8A2.3 2.3 0 0 1 12 5a2.3 2.3 0 0 1 4.5.8c0 2-2.5 2.7-4.5 2.7Z" /></>,
+  seed: <><path d="M12 21c4.4-2.3 7-5.9 7-10V5l-3 1.4C13.2 7.6 12 9.7 12 12" /><path d="M12 21c-4.4-2.3-7-5.9-7-10V5l3 1.4C10.8 7.6 12 9.7 12 12" /><path d="M12 12V3" /></>,
+  grape: <><circle cx="9" cy="8" r="2.1" /><circle cx="15" cy="8" r="2.1" /><circle cx="12" cy="12.5" r="2.1" /><circle cx="9" cy="17" r="2.1" /><circle cx="15" cy="17" r="2.1" /><path d="M12 4.2V2.6" /></>,
   scale: <><path d="M12 3v18M7 21h10M5 7h14" /><path d="m5 7-2.5 6a3.2 3.2 0 0 0 5 0Z" /><path d="m19 7-2.5 6a3.2 3.2 0 0 0 5 0Z" /></>,
   box: <><rect x="3" y="7" width="18" height="14" rx="1.5" /><path d="M3 11h18M12 7v14M7.5 7V4h9v3" /></>,
   warehouse: <><path d="m3 21 V9l9-5 9 5v12" /><path d="M3 21h18M7 21v-7h10v7M7 17.5h10" /></>,
@@ -110,7 +112,7 @@ export function Icon({ name, size = 18, strokeWidth = 1.75, className = '', styl
   )
 }
 
-export const categoryIcon = (cat) => ({ nuts: 'peanut', hospitality: 'gift', candy: 'candy', coffee: 'coffee' }[cat] || 'package')
+export const categoryIcon = (cat) => ({ nuts: 'peanut', seeds: 'seed', dried: 'grape', hospitality: 'gift', candy: 'candy', coffee: 'coffee' }[cat] || 'package')
 
 export function BrandMark({ size = 46, className = '', dark = false }) {
   return (

@@ -799,3 +799,46 @@ html[dir="rtl"] .drawer{animation-name:slideInRtl}
 html.native .install-prompt{display:none!important}
 html.native body{overscroll-behavior-y:contain}
 html.native .table-wrap{-webkit-overflow-scrolling:touch}
+
+
+/* ---------- التسعير السريع ---------- */
+.icon-tile{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--line);color:var(--gold-deep);flex:0 0 auto}
+.icon-tile svg{width:18px;height:18px}
+.cat-strip{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.cat-strip::-webkit-scrollbar{display:none}
+.cat-strip .cat-pill{flex:0 0 auto}
+.price-table td{vertical-align:middle;padding:9px 10px}
+.price-table tbody tr{transition:background .15s}
+.price-table tbody tr:hover{background:var(--surface-2)}
+.price-input{height:34px!important;padding:0 8px;text-align:center;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;direction:ltr}
+.price-input.gold{background:var(--gold-3);border-color:rgba(194,152,63,.35)}
+.price-cell{background:transparent;border:0;border-bottom:1px dashed transparent;padding:2px 4px;font-weight:700;font-size:12px;font-variant-numeric:tabular-nums;border-radius:6px;color:var(--ink)}
+.price-cell:hover{background:var(--gold-3);border-bottom-color:var(--gold)}
+.price-cell.empty{color:var(--gold-deep);font-size:10.5px;border:1px dashed rgba(194,152,63,.5);padding:3px 7px}
+.price-mini{display:flex;flex-direction:column;gap:1px;align-items:flex-start;background:transparent;border:0;padding:0;text-align:start}
+.price-mini b{font-size:12px}
+.price-mini b.empty{color:var(--gold-deep);font-size:11px;text-decoration:underline;text-underline-offset:3px}
+.row-changed{background:rgba(227,196,124,.14)!important;box-shadow:inset 3px 0 0 var(--gold)}
+.cell-icon{width:28px;height:28px;border-radius:8px;background:var(--surface-2);display:grid;place-items:center;color:var(--gold-deep);flex:0 0 auto;border:1px solid var(--line)}
+.price-card{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:12px}
+.price-card .g3{gap:8px}
+
+
+/* ---------- حالة الصنف بلا سعر ---------- */
+.prod-card.unpriced{border-style:dashed;border-color:rgba(194,152,63,.4)}
+.prod-card .price-tag{position:absolute;top:8px;inset-inline-start:8px;font-size:8.5px;font-weight:800;color:var(--gold-deep);background:var(--gold-3);border-radius:6px;padding:2px 6px}
+.prod-card.unpriced .price{color:var(--gold-deep)}
+
+/* ---------- لوحة التهيئة ---------- */
+.onboard{background:linear-gradient(150deg,#2E1F15,#1D140E);border:1px solid rgba(226,196,124,.18);border-radius:var(--r-xl);padding:20px;color:#F7EDDD;position:relative;overflow:hidden}
+.onboard::after{content:"";position:absolute;inset-inline-end:-60px;top:-70px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(227,196,124,.22),transparent 65%)}
+.onboard .ob-kicker{font-size:9.5px;letter-spacing:2.4px;color:rgba(227,196,124,.75);font-weight:800}
+.onboard h3{font-family:var(--display);font-size:22px;margin:4px 0 0;color:#FFF7E9}
+.onboard p{font-size:11.5px;color:rgba(247,237,221,.55);margin-top:4px}
+.ob-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px;position:relative;z-index:1}
+.ob-step{display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:13px;padding:12px;text-align:start;transition:.18s;color:inherit}
+.ob-step:hover{background:rgba(255,255,255,.09);transform:translateY(-1px)}
+.ob-step .n{width:24px;height:24px;border-radius:8px;background:var(--brass-grad);color:#2A1B12;display:grid;place-items:center;font-size:11px;font-weight:800;flex:0 0 auto}
+.ob-step b{display:block;font-size:11.5px;font-weight:800}
+.ob-step span{display:block;font-size:9.5px;color:rgba(247,237,221,.5);margin-top:2px;line-height:1.6}
+@media(max-width:960px){.ob-steps{grid-template-columns:1fr}}

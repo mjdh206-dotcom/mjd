@@ -4,6 +4,7 @@ import {
   convert, invoiceTotals, lineTotal, qtyBaseOf, todayISO, nowISO, uid,
   rateToNumber, unitFactor, CURRENCIES, saveBlob,
 } from './utils'
+import { CATALOG } from './catalog'
 
 const KEY = 'mahamess_alharamayn_v1'
 const listeners = new Set()
@@ -15,8 +16,8 @@ function emptyState() {
     settings: {
       shopName: 'محامص الحرمين',
       branch: 'الفرع الرئيسي',
-      phone: '0999 123 456',
-      address: 'دمشق - شارع الحمرا',
+      phone: '',
+      address: '',
       ozGrams: 250,
       defaultCurrency: 'SYP',
       rate: 1250000, // 12500.00 ل.س للدولار (×100)
@@ -26,6 +27,8 @@ function emptyState() {
       autoBackup: true,
       lastBackup: null,
       invoiceFooter: 'شكراً لتعاملكم مع محامص الحرمين',
+      catalogVersion: 1,
+      isDemo: false,
     },
     users: [
       { id: 'u_mgr', name: 'المدير', role: 'manager', pin: '1234', active: true },
@@ -51,8 +54,34 @@ function emptyState() {
   }
 }
 
-/* ---------- بيانات تجريبية واقعية ---------- */
+/* ---------- كتالوج الأصناف (كل الكميات والأسعار تبدأ صفراً) ---------- */
+export function catalogItems(existing = []) {
+  const byName = new Map(existing.map((i) => [i.name, i]))
+  return CATALOG.map(([name, category, unit], idx) => {
+    const old = byName.get(name)
+    if (old) return old
+    return {
+      id: uid('it'), name, category, unit,
+      retail: 0, wholesale: 0, cost: 0,
+      stock: 0, minStock: 0,
+      barcode: `HR-${String(idx + 1).padStart(4, '0')}`,
+      expiry: null, packSize: 1, boxPrice: 0,
+      isBasket: false, components: [],
+      active: true, createdAt: nowISO(),
+    }
+  })
+}
+
+/* ---------- الحالة الأولى: كتالوج جاهز بكميات وأسعار صفر ---------- */
 function seed() {
+  const s = emptyState()
+  s.items = catalogItems()
+  s.customers = [{ id: 'cash', name: 'زبون نقدي', phone: '', type: 'cash', notes: '', active: true, createdAt: nowISO() }]
+  return s
+}
+
+/* ---------- بيانات تجريبية واقعية ---------- */
+function demoSeed() {
   const s = emptyState()
   const now = new Date()
   const d = (offset) => {
@@ -274,6 +303,7 @@ function seed() {
     { id: uid('lg'), at: nowISO(), user: 'المدير', action: 'تعديل', entity: 'صنف', entityId: 'فستق حلبي', details: 'تحديث سعر المفرق' },
     { id: uid('lg'), at: nowISO(), user: 'أحمد شحادة', action: 'إنشاء', entity: 'فاتورة', entityId: 'S-0004', details: 'فاتورة مبيعات' },
   ]
+  s.settings.isDemo = true
   return s
 }
 
@@ -283,7 +313,16 @@ function load() {
     if (raw) {
       const parsed = JSON.parse(raw)
       const base = emptyState()
-      return { ...base, ...parsed, settings: { ...base.settings, ...(parsed.settings || {}) } }
+      // ترقية تلقائية من البيانات التجريبية القديمة إلى بداية نظيفة (كل شيء صفر)
+      const demoFingerprint = (parsed.customers || []).some((c) => c.name === 'أبو محمد الخضري') ||
+        (parsed.items || []).some((i) => i.name === 'فستق حلبي' && i.stock === 18500)
+      if (demoFingerprint) {
+        const clean = seed()
+        try { localStorage.setItem(KEY, JSON.stringify(clean)) } catch (e) { /* ignore */ }
+        return clean
+      }
+      const looksDemo = parsed.settings?.isDemo === undefined && (parsed.items?.length || 0) < 30 && (parsed.invoices?.length || 0) > 0
+      return { ...base, ...parsed, settings: { ...base.settings, ...(parsed.settings || {}), isDemo: parsed.settings?.isDemo ?? looksDemo } }
     }
   } catch (e) {
     console.warn('failed to load store', e)
@@ -319,17 +358,71 @@ export function useStore() {
   return useSyncExternalStore(subscribe, getState, getState)
 }
 
+/** تحميل البيانات التجريبية (للتجربة والعرض فقط). */
 export function resetDemo() {
-  state = seed()
+  state = demoSeed()
   emit()
 }
 
-export function clearAll() {
-  const s = emptyState()
-  s.settings = { ...s.settings }
-  state = s
+/** إضافة أصناف الكتالوج الناقصة دون المساس بالأصناف الحالية. */
+export function ensureCatalog() {
+  setState((s) => {
+    const items = catalogItems(s.items)
+    const added = items.length - s.items.length
+    return withLog({ ...s, items }, 'إضافة', 'كتالوج', 'الأصناف', `إضافة ${added} صنفاً من الكتالوج`)
+  })
+}
+
+/** تصفير كل الحركات مع الإبقاء على الأصناف والزبائن والمستخدمين. */
+export function resetMovements({ clearStock = true } = {}) {
+  setState((s) => {
+    const items = s.items.map((i) => (clearStock ? { ...i, stock: 0 } : i))
+    return withLog({
+      ...s, items, settings: { ...s.settings, isDemo: false },
+      invoices: [], payments: [], withdrawals: [], workerTx: [], expenses: [],
+      closings: [], preorders: [], stockMoves: [], roasts: [], stocktakes: [], audit: [],
+      seq: { sale: 1, purchase: 1 },
+    }, 'تصفير', 'النظام', 'الحركات', clearStock ? 'تصفير الحركات والمخزون' : 'تصفير الحركات')
+  })
+}
+
+/** تصفير النظام بالكامل: كل الأرقام صفر مع كتالوج الأصناف. */
+export function resetSystem({ keepUsers = true, keepSettings = true } = {}) {
+  const base = emptyState()
+  if (keepSettings) {
+    const keys = ['shopName', 'branch', 'phone', 'address', 'ozGrams', 'defaultCurrency', 'rate', 'theme', 'pinEnabled', 'managerPin', 'autoBackup', 'invoiceFooter', 'catalogVersion']
+    keys.forEach((k) => { if (state.settings[k] !== undefined) base.settings[k] = state.settings[k] })
+  }
+  base.settings.isDemo = false
+  if (keepUsers && state.users?.length) base.users = state.users.map((u) => ({ ...u }))
+  base.items = catalogItems().map((i) => ({ ...i, stock: 0, retail: 0, wholesale: 0, cost: 0, minStock: 0, expiry: null }))
+  base.customers = [{ id: 'cash', name: 'زبون نقدي', phone: '', type: 'cash', notes: '', active: true, createdAt: nowISO() }]
+  state = base
   emit()
 }
+
+/** تحديث أسعار مجموعة أصناف دفعة واحدة (شاشة التسعير السريع). */
+export function updatePrices(entries) {
+  if (!entries?.length) return
+  setState((s) => {
+    const map = new Map(entries.map((e) => [e.id, e]))
+    const items = s.items.map((it) => {
+      const p = map.get(it.id)
+      if (!p) return it
+      return {
+        ...it,
+        retail: p.retail !== undefined ? Math.max(0, Math.round(p.retail)) : it.retail,
+        wholesale: p.wholesale !== undefined ? Math.max(0, Math.round(p.wholesale)) : it.wholesale,
+        cost: p.cost !== undefined ? Math.max(0, Math.round(p.cost)) : it.cost,
+        unit: p.unit || it.unit,
+      }
+    })
+    return withLog({ ...s, items }, 'تعديل', 'الأسعار', 'التسعير السريع', `تحديث أسعار ${entries.length} صنف`)
+  })
+}
+
+/** توافق قديم. */
+export function clearAll() { resetSystem() }
 
 /* ---------- السجل ---------- */
 export function log(action, entity, entityId, details, user) {
@@ -622,6 +715,25 @@ export function addStocktake(st) {
     const items = s.items.map((i) => (i.id === st.itemId ? { ...i, stock: st.countedQty } : i))
     const record = { ...st, id: uid('st'), diff, createdAt: nowISO(), createdBy: s.session?.name || 'المدير' }
     return withLog({ ...s, items, stocktakes: [record, ...s.stocktakes], stockMoves: [{ id: uid('mv'), at: nowISO(), itemId: st.itemId, qtyBase: diff, type: 'stocktake', note: st.note || 'جرد' }, ...s.stockMoves] }, 'جرد', 'مخزون', s.items.find((i) => i.id === st.itemId)?.name || '', `الفرق ${diff}`)
+  })
+}
+
+/** جرد شامل: ضبط كميات عدة أصناف دفعة واحدة. */
+export function applyStocktakes(entries) {
+  if (!entries?.length) return
+  setState((s) => {
+    const map = new Map(entries.map((e) => [e.itemId, e]))
+    const items = s.items.map((i) => (map.has(i.id) ? { ...i, stock: Math.max(0, map.get(i.id).countedQty) } : i))
+    const at = nowISO()
+    const records = entries.map((e) => ({
+      id: uid('st'), date: todayISO(), itemId: e.itemId, systemQty: e.systemQty, countedQty: e.countedQty,
+      diff: e.countedQty - e.systemQty, note: e.note || 'جرد شامل', createdAt: at, createdBy: s.session?.name || 'المدير',
+    }))
+    const moves = entries.filter((e) => e.countedQty !== e.systemQty).map((e) => ({
+      id: uid('mv'), at, itemId: e.itemId, qtyBase: e.countedQty - e.systemQty, type: 'stocktake', note: 'جرد شامل',
+    }))
+    return withLog({ ...s, items, stocktakes: [...records, ...s.stocktakes], stockMoves: [...moves, ...s.stockMoves] },
+      'جرد', 'مخزون', 'جرد شامل', `${entries.length} صنف`)
   })
 }
 

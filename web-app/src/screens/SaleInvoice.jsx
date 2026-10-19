@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useStore, saveInvoice, saveCustomer, lastPriceFor, nextNo, rateNow, partyStats } from '../store'
+import { useStore, saveInvoice, saveCustomer, lastPriceFor, nextNo, rateNow, partyStats, updatePrices } from '../store'
 import {
   CURRENCIES, UNITS, money, parseAmount, convert, unitFactor, invoiceTotals,
-  qtyBaseOf, lineTotal, fmtQty, todayISO, rateToNumber, CATEGORIES, uid,
+  qtyBaseOf, lineTotal, fmtQty, todayISO, rateToNumber, CATEGORIES, uid, normalizeAr,
 } from '../utils'
 import { Card, Field, Modal, Money, Seg, Avatar, Drawer, Empty } from '../components'
 import { Icon, categoryIcon } from '../icons'
@@ -91,8 +91,8 @@ export default function SaleInvoice({ go, onToast, editId, onDone }) {
     if (category !== 'all') list = list.filter((i) => i.category === category)
     const q = search.trim()
     if (q) {
-      const nq = q.toLowerCase()
-      list = list.filter((i) => i.name.toLowerCase().includes(nq) || (i.barcode || '').includes(q))
+      const nq = normalizeAr(q)
+      list = list.filter((i) => normalizeAr(i.name).includes(nq) || (i.barcode || '').includes(q))
     }
     return list
   }, [s.items, category, search])
@@ -340,8 +340,8 @@ export default function SaleInvoice({ go, onToast, editId, onDone }) {
                   <input value={(l.qtyMilli / 1000).toString()} onChange={(e) => updateLine(idx, { qtyMilli: Math.max(0, Math.round(parseAmount(e.target.value) * 1000)) })} inputMode="decimal" />
                   <button onClick={() => updateLine(idx, { qtyMilli: l.qtyMilli + (l.unit === 'kg' ? 250 : 1000) })}><Icon name="plus" /></button>
                 </div>
-                {s.items.find((x) => x.id === l.itemId)?.unit === 'piece' ? (
-                  <span className="unit-select" style={{ display: 'grid', placeItems: 'center' }}>قطعة</span>
+                {s.items.find((x) => x.id === l.itemId)?.unit !== 'kg' ? (
+                  <span className="unit-select" style={{ display: 'grid', placeItems: 'center' }}>{UNITS[l.unit]?.name || 'قطعة'}</span>
                 ) : (
                   <select className="unit-select" value={l.unit} onChange={(e) => changeUnitOnLine(idx, e.target.value)}>
                     <option value="kg">كغ</option><option value="g">غرام</option><option value="oz">أوقية</option>
@@ -513,14 +513,15 @@ export default function SaleInvoice({ go, onToast, editId, onDone }) {
                   const low = i.minStock > 0 && i.stock <= i.minStock
                   const out = i.stock <= 0
                   return (
-                    <button key={i.id} className="prod-card" onClick={() => setPickerItem(i)}>
+                    <button key={i.id} className={`prod-card ${price <= 0 ? 'unpriced' : ''}`} onClick={() => setPickerItem(i)}>
                       {i.isBasket && <span className="basket-tag">سلة</span>}
+                      {price <= 0 && <span className="price-tag">حدّد السعر</span>}
                       <span className="cat-ic"><Icon name={categoryIcon(i.category)} /></span>
                       <span className="name">{i.name}</span>
                       <div className="meta">
                         <span className="price">
-                          {money(convert(price, 'SYP', currency, rate) * (isWeight ? unitFactor('kg', ozGrams) / 1000 : 1), currency, { bare: true })}
-                          <small> /{isWeight ? 'كغ' : 'قطعة'}</small>
+                          {price <= 0 ? '—' : money(convert(price, 'SYP', currency, rate) * (isWeight ? unitFactor('kg', ozGrams) / 1000 : 1), currency, { bare: true })}
+                          <small> /{isWeight ? 'كغ' : i.unit === 'box' ? 'علبة' : 'قطعة'}</small>
                         </span>
                         <span className={`stock-badge ${out ? 'out' : low ? 'low' : ''}`}>{out ? 'نفد' : `${qty.toLocaleString('en-US', { maximumFractionDigits: 2 })}`}</span>
                       </div>
@@ -624,6 +625,7 @@ function AddItemModal({ item, currency, rate, priceTier, customerId, unitPriceOf
   const [unit, setUnit] = useState(isWeight ? 'kg' : 'piece')
   const [qty, setQty] = useState('1')
   const [price, setPrice] = useState(() => String(unitPriceOf(item, isWeight ? 'kg' : 'piece') / Math.pow(10, CURRENCIES[currency].decimals)))
+  const [saveAsBase, setSaveAsBase] = useState(item.retail <= 0 && item.wholesale <= 0)
   const dec = CURRENCIES[currency].decimals
   const last = lastPriceFor(item.id, customerId)
   const lastSame = last && last.currency === currency
@@ -635,15 +637,27 @@ function AddItemModal({ item, currency, rate, priceTier, customerId, unitPriceOf
   const qtyN = parseAmount(qty)
   const priceMinor = Math.round(parseAmount(price) * Math.pow(10, dec))
   const total = Math.round((qtyN * 1000 * priceMinor) / 1000)
-  const stockLabel = isWeight ? `${(item.stock / 1000).toLocaleString('en-US')} كغ` : `${item.stock} قطعة`
+  const stockLabel = isWeight ? `${(item.stock / 1000).toLocaleString('en-US')} كغ` : item.unit === 'box' ? `${item.stock} علبة` : `${item.stock} قطعة`
+  const add = () => {
+    if (saveAsBase && priceMinor > 0) {
+      updatePrices([{ id: item.id, retail: Math.round(convert(priceMinor, currency, 'SYP', rate)) }])
+    }
+    onAdd(item, { qty: qtyN, unit, price: priceMinor })
+  }
 
   return (
     <Modal open onClose={onClose} title={item.name} subtitle={`${CATEGORIES.find((c) => c.id === item.category)?.name || ''} · المتوفر: ${stockLabel}`} icon={categoryIcon(item.category)}
       footer={<>
-        <button className="btn btn-gold" onClick={() => onAdd(item, { qty: qtyN, unit, price: priceMinor })} disabled={qtyN <= 0}><Icon name="plus" />إضافة للفاتورة</button>
+        <button className="btn btn-gold" onClick={add} disabled={qtyN <= 0 || priceMinor <= 0}><Icon name="plus" />إضافة للفاتورة</button>
         <button className="btn btn-ghost" onClick={onClose}>إلغاء</button>
       </>}>
       <div className="stack">
+        {item.retail <= 0 && item.wholesale <= 0 && (
+          <div className="row" style={{ background: 'var(--danger-soft)', borderRadius: 10, padding: '9px 10px', gap: 7 }}>
+            <Icon name="alert" size={15} style={{ color: 'var(--danger)' }} />
+            <span className="tiny" style={{ fontWeight: 700, color: 'var(--danger)' }}>هذا الصنف بلا سعر أساسي — أدخل سعر البيع هنا، وسيُحفظ للصنف تلقائياً.</span>
+          </div>
+        )}
         {lastSame && customerId !== 'cash' && (
           <div className="row" style={{ background: 'var(--gold-3)', borderRadius: 10, padding: '8px 10px', gap: 7 }}>
             <Icon name="sparkles" size={15} style={{ color: 'var(--gold-deep)' }} />
@@ -654,13 +668,13 @@ function AddItemModal({ item, currency, rate, priceTier, customerId, unitPriceOf
           <Field label="الكمية">
             <div className="row nowrap" style={{ gap: 5 }}>
               <button className="btn btn-subtle btn-icon" onClick={() => setQty(String(Math.max(0, qtyN - (unit === 'kg' ? 0.25 : 1))))}><Icon name="minus" /></button>
-              <input className="input" inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)} style={{ textAlign: 'center', fontWeight: 800, fontSize: 16 }} autoFocus />
+              <input className="input" inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)} style={{ textAlign: 'center', fontWeight: 800, fontSize: 16 }} autoFocus={item.retail > 0 || item.wholesale > 0} />
               <button className="btn btn-subtle btn-icon" onClick={() => setQty(String(qtyN + (unit === 'kg' ? 0.25 : 1)))}><Icon name="plus" /></button>
             </div>
           </Field>
           <Field label="الوحدة">
             <select className="select" value={unit} onChange={(e) => setUnit(e.target.value)}>
-              {isWeight ? (<><option value="kg">كيلوغرام</option><option value="g">غرام</option><option value="oz">أوقية ({ozGrams} غ)</option></>) : (<option value="piece">قطعة</option>)}
+              {isWeight ? (<><option value="kg">كيلوغرام</option><option value="g">غرام</option><option value="oz">أوقية ({ozGrams} غ)</option></>) : item.unit === 'box' ? (<option value="box">علبة</option>) : (<option value="piece">قطعة</option>)}
             </select>
           </Field>
         </div>
@@ -673,7 +687,7 @@ function AddItemModal({ item, currency, rate, priceTier, customerId, unitPriceOf
         )}
         <Field label={`سعر البيع (${CURRENCIES[currency].short} / ${UNITS[unit]?.name})`}>
           <div style={{ position: 'relative' }}>
-            <input className="input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} style={{ fontSize: 17, fontWeight: 800, height: 46, paddingInlineEnd: 48, direction: 'ltr', textAlign: 'right' }} />
+            <input className="input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} autoFocus={item.retail <= 0 && item.wholesale <= 0} style={{ fontSize: 17, fontWeight: 800, height: 46, paddingInlineEnd: 48, direction: 'ltr', textAlign: 'right' }} />
             <span className="money-suffix">{CURRENCIES[currency].short}</span>
           </div>
         </Field>
@@ -685,6 +699,12 @@ function AddItemModal({ item, currency, rate, priceTier, customerId, unitPriceOf
           <b style={{ fontSize: 20, direction: 'ltr', color: 'var(--gold-deep)' }}>{money(total, currency)}</b>
         </div>
         {item.isBasket && <div className="tiny muted" style={{ lineHeight: 1.8 }}>سلة ضيافة: تُخصم مكوّناتها من المخزون تلقائياً عند البيع.</div>}
+        {saveAsBase && (
+          <label className="row" style={{ gap: 8, cursor: 'pointer' }}>
+            <input type="checkbox" checked={saveAsBase} onChange={(e) => setSaveAsBase(e.target.checked)} />
+            <span className="tiny muted">حفظ السعر كسعر أساسي للصنف (يظهر في شاشة البيع لاحقاً)</span>
+          </label>
+        )}
       </div>
     </Modal>
   )

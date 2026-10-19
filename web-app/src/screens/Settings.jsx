@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { useStore, updateSettings, setTheme, setRate, rateNow, exportBackup, importBackup, resetDemo, clearAll, saveItem } from '../store'
+import { useStore, updateSettings, setTheme, setRate, rateNow, exportBackup, importBackup, resetDemo, ensureCatalog, resetMovements, resetSystem } from '../store'
 import { CURRENCIES, money, rateToNumber, todayISO } from '../utils'
 import { Card, Field, PageHead, Seg, Toggle, ConfirmDialog, Modal } from '../components'
 import { Icon, BrandMark } from '../icons'
@@ -109,7 +109,7 @@ export default function Settings({ onToast }) {
 
           <Card title="معلومات النظام" icon="info">
             <div className="stack">
-              <div className="row between"><span className="small muted">الإصدار</span><b className="small">2.0.0 Pro</b></div>
+              <div className="row between"><span className="small muted">الإصدار</span><b className="small">2.1.0 Pro</b></div>
               <div className="row between"><span className="small muted">قاعدة البيانات</span><b className="small">محلية (بدون إنترنت)</b></div>
               <div className="row between"><span className="small muted">حجم البيانات</span><b className="small">{storageSize} ك.ب</b></div>
               <div className="row between"><span className="small muted">عدد الأصناف</span><b className="small">{s.items.length}</b></div>
@@ -175,17 +175,27 @@ export default function Settings({ onToast }) {
             </div>
           </Card>
 
-          <Card title="منطقة الخطر" icon="alert">
+          <Card title="بيانات النظام" icon="database" subtitle="تهيئة البداية، التصفير، والكتالوج الجاهز">
             <div className="stack">
+              <div className="card tight" style={{ background: 'var(--gold-3)', borderColor: 'rgba(194,152,63,.3)' }}>
+                <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--gold-deep)' }}>كتالوج أصناف المحامص</div>
+                <div className="tiny" style={{ color: 'var(--gold-deep)', opacity: .85, marginTop: 3, lineHeight: 1.7 }}>أكثر من 110 أصناف: مكسرات، بزور، مجففات، قهوة، كاندي وضيافة. الكميات والأسعار تبدأ صفراً.</div>
+                <button className="btn btn-gold btn-sm" style={{ marginTop: 8 }} onClick={() => setConfirm('catalog')}><Icon name="package" />استعادة الأصناف الناقصة</button>
+              </div>
+              <div className="card tight" style={{ background: 'var(--surface-2)' }}>
+                <div style={{ fontSize: 12.5, fontWeight: 800 }}>تصفير الحركات</div>
+                <div className="tiny muted" style={{ marginTop: 3, lineHeight: 1.7 }}>يحذف الفواتير والحسابات والحركات، ويبقي الأصناف والزبائن والأسعار.</div>
+                <button className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={() => setConfirm('moves')}><Icon name="rotate" />تصفير الحركات</button>
+              </div>
               <div className="card tight" style={{ background: 'var(--warn-soft)', borderColor: 'rgba(169,113,29,.22)' }}>
-                <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--warn)' }}>إعادة البيانات التجريبية</div>
-                <div className="tiny" style={{ color: 'var(--warn)', opacity: .85, marginTop: 3, lineHeight: 1.7 }}>تستبدل كل البيانات الحالية ببيانات تجريبية جاهزة للعرض.</div>
-                <button className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={() => setConfirm('demo')}>إعادة التهيئة التجريبية</button>
+                <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--warn)' }}>بيانات تجريبية</div>
+                <div className="tiny" style={{ color: 'var(--warn)', opacity: .85, marginTop: 3, lineHeight: 1.7 }}>يملأ النظام بفواتير وأصناف وأسعار للتجربة والعرض فقط.</div>
+                <button className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={() => setConfirm('demo')}>تحميل البيانات التجريبية</button>
               </div>
               <div className="card tight" style={{ background: 'var(--danger-soft)', borderColor: 'rgba(178,59,59,.2)' }}>
-                <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--danger)' }}>حذف كل البيانات</div>
-                <div className="tiny" style={{ color: 'var(--danger)', opacity: .85, marginTop: 3, lineHeight: 1.7 }}>حذف نهائي لجميع الفواتير والحسابات مع الإبقاء على إعدادات المحل.</div>
-                <button className="btn btn-danger btn-sm" style={{ marginTop: 8 }} onClick={() => setConfirm('clear')}>حذف كل البيانات</button>
+                <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--danger)' }}>تصفير النظام بالكامل</div>
+                <div className="tiny" style={{ color: 'var(--danger)', opacity: .85, marginTop: 3, lineHeight: 1.7 }}>يرجع كل شيء إلى الصفر: أصناف بلا أسعار ولا كميات، ولا فواتير. تُحفظ إعدادات المحل والمستخدمون.</div>
+                <button className="btn btn-danger btn-sm" style={{ marginTop: 8 }} onClick={() => setConfirm('clear')}>تصفير كل شيء</button>
               </div>
               <div className="tiny muted">يُنصح بتنزيل نسخة احتياطية قبل أي عملية حذف.</div>
             </div>
@@ -193,10 +203,13 @@ export default function Settings({ onToast }) {
         </div>
       )}
 
-      <ConfirmDialog open={confirm === 'demo'} onClose={() => setConfirm(null)} title="إعادة البيانات التجريبية" text="سيتم استبدال جميع البيانات الحالية ببيانات تجريبية. لا يمكن التراجع." confirmLabel="إعادة التهيئة" tone="primary" icon="rotate"
-        onConfirm={() => { resetDemo(); onToast?.('تمت إعادة البيانات التجريبية') }} />
-      <ConfirmDialog open={confirm === 'clear'} onClose={() => setConfirm(null)} title="حذف كل البيانات" text="سيتم حذف كل الفواتير والزبائن والأصناف والحسابات نهائياً. ننصح بتصدير نسخة احتياطية أولاً." confirmLabel="حذف نهائي" tone="danger"
-        onConfirm={() => { clearAll(); onToast?.('تم حذف جميع البيانات') }} />
+      <ConfirmDialog open={confirm === 'demo'} onClose={() => setConfirm(null)} title="تحميل بيانات تجريبية" text="سيتم استبدال كل البيانات الحالية ببيانات تجريبية جاهزة. لا يمكن التراجع." confirmLabel="تحميل التجريبية" tone="primary" icon="rotate"
+        onConfirm={() => { resetDemo(); onToast?.('تم تحميل البيانات التجريبية') }} />
+      <ConfirmDialog open={confirm === 'catalog'} onClose={() => setConfirm(null)} title="استعادة كتالوج الأصناف" text="ستُضاف أصناف الكتالوج الناقصة فقط (بكميات وأسعار صفر) دون المساس بأصنافك وأسعارك الحالية." confirmLabel="إضافة الأصناف الناقصة" tone="primary" icon="package"
+        onConfirm={() => { ensureCatalog(); onToast?.('تم تحديث كتالوج الأصناف') }} />
+
+      {confirm === 'moves' && <MovesResetModal onClose={() => setConfirm(null)} onDone={(opts) => { resetMovements(opts); setConfirm(null); onToast?.('تم تصفير الحركات') }} />}
+      {confirm === 'clear' && <FullResetModal onClose={() => setConfirm(null)} onDone={() => { resetSystem(); setConfirm(null); onToast?.('تم تصفير النظام بالكامل') }} />}
 
       {importData && (
         <Modal open onClose={() => setImportData(null)} title="استعادة نسخة احتياطية" subtitle="راجع الملف قبل الاستبدال" icon="upload" size="sm"
@@ -217,5 +230,54 @@ export default function Settings({ onToast }) {
         </Modal>
       )}
     </div>
+  )
+}
+
+
+function MovesResetModal({ onClose, onDone }) {
+  const [clearStock, setClearStock] = useState(true)
+  return (
+    <Modal open onClose={onClose} title="تصفير الحركات" subtitle="لا يمكن التراجع" icon="rotate" size="sm"
+      footer={<>
+        <button className="btn btn-danger" onClick={() => onDone({ clearStock })}>تصفير الحركات</button>
+        <button className="btn btn-ghost" onClick={onClose}>إلغاء</button>
+      </>}>
+      <div className="stack">
+        <p style={{ fontSize: 12.5, lineHeight: 1.9, color: 'var(--ink-2)' }}>
+          سيتم حذف الفواتير والمشتريات والمصاريف والمسحوبات والدفعات وإقفالات الصندوق وسجل العمليات.
+          تبقى الأصناف والزبائن والمستخدمون والإعدادات.
+        </p>
+        <div className="row between">
+          <div><div style={{ fontSize: 12.5, fontWeight: 700 }}>تصفير كميات المخزون</div><div className="tiny muted">اجعل مخزون كل صنف صفراً</div></div>
+          <Toggle on={clearStock} onChange={setClearStock} />
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+function FullResetModal({ onClose, onDone }) {
+  const [text, setText] = useState('')
+  const ready = text.trim() === 'تصفير'
+  return (
+    <Modal open onClose={onClose} title="تصفير النظام بالكامل" subtitle="عملية نهائية — اكتب كلمة التأكيد" icon="alert" size="sm"
+      footer={<>
+        <button className="btn btn-danger" disabled={!ready} onClick={onDone}><Icon name="trash" />تصفير نهائي</button>
+        <button className="btn btn-ghost" onClick={onClose}>إلغاء</button>
+      </>}>
+      <div className="stack">
+        <div className="row" style={{ background: 'var(--danger-soft)', padding: 10, borderRadius: 9, gap: 7 }}>
+          <Icon name="alert" size={16} style={{ color: 'var(--danger)' }} />
+          <span className="tiny" style={{ color: 'var(--danger)', fontWeight: 700 }}>سيُحذف كل شيء: الفواتير، الأصناف، الزبائن، الموردون، العمال، الكشوفات والحركات.</span>
+        </div>
+        <div className="tiny muted" style={{ lineHeight: 1.9 }}>
+          سيعود النظام إلى حالة البداية: كتالوج الأصناف كاملاً بكميات وأسعار صفر، ولا فواتير ولا أرصدة.
+          تُحفظ أسماء المحل والمستخدمون وأرقام الدخول وسعر الصرف.
+        </div>
+        <Field label="اكتب «تصفير» للتأكيد">
+          <input className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="تصفير" autoFocus />
+        </Field>
+      </div>
+    </Modal>
   )
 }

@@ -40,10 +40,22 @@ for (const d of ['1', '2', '3', '4']) await click(d, true)
 await wait(600)
 ok(text().includes('أهلاً'), 'login manager')
 
+// price one item first (everything starts at zero)
+await click('التسعير السريع', true)
+await wait(300)
+const g0 = [...document.querySelectorAll('input.price-input.gold')][0]
+const c0 = [...document.querySelectorAll('input.price-input:not(.gold)')][0]
+setVal(g0, '5000'); await wait(80); setVal(c0, '4000'); await wait(120)
+const savePrices = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('حفظ الكل') && !b.disabled)
+savePrices?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
+await wait(350)
+ok(JSON.parse(localStorage.getItem('mahamess_alharamayn_v1')).items.some((i) => i.retail === 5000), 'bulk pricing saved')
+
 // POS
 await click('بيع سريع', true)
 ok(!!document.querySelector('.prod-card'), 'POS products rendered')
-document.querySelector('.prod-card').dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
+const pricedCard = [...document.querySelectorAll('.prod-card')].find((c) => !c.classList.contains('unpriced')) || document.querySelector('.prod-card')
+pricedCard.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
 await wait(200)
 ok(text().includes('إضافة للفاتورة'), 'add item modal')
 await click('إضافة للفاتورة')
@@ -121,7 +133,7 @@ await wait(250)
 for (const t of ['التشغيل والأسعار', 'الحماية والمظهر', 'النسخ الاحتياطي']) { await click(t); await wait(180); ok(text().length > 1000, `settings ${t}`) }
 
 // notifications + palette
-await click('التنبيهات')
+document.querySelector('button[title="التنبيهات"]')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
 await wait(250)
 ok(text().includes('مركز التنبيهات'), 'notifications drawer')
 await click('إغلاق'); await wait(100)
@@ -132,7 +144,7 @@ window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }))
 await wait(150)
 
 // dark mode
-await click('الوضع الداكن')
+document.querySelector('button[title="الوضع الداكن"]')?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
 await wait(200)
 ok(document.documentElement.dataset.theme === 'dark', 'dark mode')
 

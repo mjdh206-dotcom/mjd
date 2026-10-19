@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { useStore, lowStockItems, expiringItems, cashFlow, partyStats, setRate, rateNow, topItems } from '../store'
+import { useStore, lowStockItems, expiringItems, cashFlow, partyStats, setRate, rateNow, topItems, resetSystem } from '../store'
 import { money, todayISO, convert, fmtDate, dayOffset } from '../utils'
-import { Card, Kpi, Empty, StatusBadge, Seg, Money, Avatar, Field } from '../components'
+import { Card, Kpi, Empty, StatusBadge, Seg, Money, Avatar, Field, ConfirmDialog } from '../components'
 import { AreaChart, Donut, Bars } from '../charts'
 import { Icon, categoryIcon } from '../icons'
 
@@ -12,6 +12,7 @@ export default function Dashboard({ go, onToast }) {
   const [rateInput, setRateInput] = useState(String(rateNow()))
   const [chartMode, setChartMode] = useState('sales')
   const [range, setRange] = useState(14)
+  const [resetOpen, setResetOpen] = useState(false)
 
   const d = useMemo(() => {
     const sales = s.invoices.filter((i) => i.type === 'sale' && i.status !== 'cancelled')
@@ -67,6 +68,8 @@ export default function Dashboard({ go, onToast }) {
 
   const bestDay = d.series.reduce((a, b) => (b.sales > a.sales ? b : a), d.series[0] || { sales: 0 })
   const expensesToday = s.expenses.filter((e) => e.date === today)
+  const unpriced = s.items.filter((i) => i.retail <= 0).length
+  const noData = s.invoices.length === 0
 
   const heroStat = (label, v, c, sub) => (
     <div>
@@ -140,6 +143,48 @@ export default function Dashboard({ go, onToast }) {
         <Kpi label="صافي صندوق اليوم" value={<>{money(d.cashSYP.net, 'SYP', { bare: true })} <small>ل.س</small></>} icon="bank"
           sub={<>+ <Money value={d.cashUSD.net} currency="USD" /> دولار</>} onClick={isManager ? () => go('cash') : undefined} />
       </div>
+
+      {isManager && s.settings.isDemo && (
+        <div className="card tight" style={{ background: 'var(--warn-soft)', borderColor: 'rgba(169,113,29,.28)' }}>
+          <div className="row between" style={{ gap: 10, flexWrap: 'wrap' }}>
+            <div className="row" style={{ gap: 9 }}>
+              <Icon name="info" size={17} style={{ color: 'var(--warn)' }} />
+              <div><b className="small" style={{ color: 'var(--warn)' }}>أنت تستخدم بيانات تجريبية</b><div className="tiny muted">لبدء العمل ببياناتك الحقيقية، صفّر النظام ليصبح كل شيء صفراً مع كامل كتالوج الأصناف.</div></div>
+            </div>
+            <div className="row" style={{ gap: 6 }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => go('settings')}>الإعدادات</button>
+              <button className="btn btn-gold btn-sm" onClick={() => setResetOpen(true)}><Icon name="rotate" />ابدأ من الصفر</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isManager && (unpriced > 0 || noData) && (
+        <section className="onboard">
+          <div className="ob-kicker">تهيئة المحل</div>
+          <h3>ثلاث خطوات ويصبح المحل جاهزاً</h3>
+          <p>كل الكميات والأسعار تبدأ صفراً — أنت من يحدد أسعاره ومخزونه.</p>
+          <div className="ob-steps">
+            <button className="ob-step" onClick={() => go('pricing')}>
+              <span className="n">1</span>
+              <span><b>سعّر الأصناف ({unpriced})</b><span>حدّد المفرق والجملة والتكلفة لكل صنف، أو طبّق هامش ربح تلقائياً.</span></span>
+            </button>
+            <button className="ob-step" onClick={() => go('inventory')}>
+              <span className="n">2</span>
+              <span><b>أدخل المخزون</b><span>سجّل الكميات الواردة أو استخدم جرد البداية لضبط الأرصدة.</span></span>
+            </button>
+            <button className="ob-step" onClick={() => go('sale-new')}>
+              <span className="n">3</span>
+              <span><b>ابدأ البيع</b><span>أنشئ أول فاتورة، واختر الدفع نقداً أو ديناً أو جزئياً.</span></span>
+            </button>
+          </div>
+        </section>
+      )}
+
+      <ConfirmDialog open={resetOpen} onClose={() => setResetOpen(false)} title="البدء من الصفر" icon="rotate" tone="primary"
+        text="سيتم تصفير كل الفواتير والحركات والأسعار والكميات مع الإبقاء على كامل كتالوج الأصناف وإعدادات المحل والمستخدمين. لا يمكن التراجع."
+        confirmLabel="تصفير وبدء العمل"
+        onConfirm={() => { resetSystem(); onToast?.('تم تصفير النظام — ابدأ بتسعير الأصناف') }} />
 
       {/* تنبيهات */}
       <div className="grid g4">

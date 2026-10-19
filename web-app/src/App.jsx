@@ -9,6 +9,7 @@ import { Modal, Drawer, Field, useToast, Avatar, Seg, Toggle, Empty, StatusBadge
 import { Icon, BrandMark, categoryIcon } from './icons'
 import Dashboard from './screens/Dashboard'
 import Items from './screens/Items'
+import Pricing from './screens/Pricing'
 import SaleInvoice from './screens/SaleInvoice'
 import Invoices from './screens/Invoices'
 import Customers from './screens/Customers'
@@ -36,6 +37,7 @@ const NAV = [
   ] },
   { group: 'المخزون', items: [
     { id: 'items', label: 'الأصناف والمنتجات', icon: 'peanut' },
+    { id: 'pricing', label: 'التسعير السريع', icon: 'tag', managerOnly: true },
     { id: 'inventory', label: 'المخزون والتحميص', icon: 'warehouse', managerOnly: true },
   ] },
   { group: 'الحسابات', items: [
@@ -58,7 +60,7 @@ const NAV = [
 ]
 
 const TITLES = {
-  dashboard: 'لوحة التحكم', 'sale-new': 'بيع سريع', sales: 'فواتير المبيعات', items: 'الأصناف والمنتجات',
+  dashboard: 'لوحة التحكم', 'sale-new': 'بيع سريع', sales: 'فواتير المبيعات', items: 'الأصناف والمنتجات', pricing: 'التسعير السريع',
   inventory: 'المخزون والتحميص', customers: 'الزبائن', suppliers: 'الموردون', purchases: 'المشتريات',
   expenses: 'المصاريف', cash: 'الصندوق والإقفال', withdrawals: 'مسحوبات المحل', workers: 'العمال والسحوبات',
   reports: 'التقارير والتحليلات', users: 'المستخدمون', audit: 'سجل العمليات', settings: 'الإعدادات والنسخ',
@@ -67,6 +69,7 @@ const TITLES = {
 const SUBS = {
   dashboard: 'ملخص حي لأداء المحل اليوم',
   'sale-new': 'أنشئ فاتورة في ثوانٍ',
+  pricing: 'حدّد أسعار كل الأصناف في جدول واحد',
   sales: 'كل الفواتير، قابلة للبحث والتعديل والإلغاء',
   items: 'الأسعار والوحدات والباركود والصلاحية',
   inventory: 'الجرد والتحميص وحركة المخزون',
@@ -156,6 +159,7 @@ export default function App() {
       case 'sales': return <Invoices {...props} type="sale" />
       case 'purchases': return <Purchases {...props} />
       case 'items': return <Items {...props} />
+      case 'pricing': return <Pricing {...props} />
       case 'inventory': return <Inventory {...props} />
       case 'customers': return <Customers {...props} />
       case 'suppliers': return <Suppliers {...props} />
@@ -512,7 +516,7 @@ function LockScreen({ notify, toastEl }) {
         <div className="lock-stats">
           <div className="lock-stat"><b>2</b><span>عملة (ليرة / دولار)</span></div>
           <div className="lock-stat"><b>100%</b><span>يعمل بلا إنترنت</span></div>
-          <div className="lock-stat"><b>v2.0</b><span>الإصدار الاحترافي</span></div>
+          <div className="lock-stat"><b>v2.1</b><span>الإصدار الاحترافي</span></div>
         </div>
       </div>
 

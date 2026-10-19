@@ -77,7 +77,7 @@ jobs:
         if: always()
         run: |
           mkdir -p dist-pro
-          find android-pro/app/build/outputs/apk -name "*.apk" -exec cp {} dist-pro/mahamess-alharamayn-pro-2.0.0.apk \; || true
+          find android-pro/app/build/outputs/apk -name "*.apk" -exec cp {} dist-pro/mahamess-alharamayn-pro-2.1.0.apk \; || true
           cp build-pro.log dist-pro/build.log || true
           ls -lh dist-pro || true
 

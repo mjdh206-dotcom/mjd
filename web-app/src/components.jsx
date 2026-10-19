@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Icon } from './icons'
 import { money as fmtMoney } from './utils'
 
-export function Card({ title, subtitle, icon, badge, action, children, className = '', style, flush, dark }) {
+export function Card({ title, subtitle, icon, badge, action, children, className = '', style, flush, tight, dark }) {
   return (
-    <section className={`card ${flush ? 'flush' : ''} ${dark ? 'dark' : ''} ${className}`} style={style}>
+    <section className={`card ${flush ? 'flush' : ''} ${tight ? 'tight' : ''} ${dark ? 'dark' : ''} ${className}`} style={style}>
       {(title || action) && (
         <div className="card-head" style={flush ? { padding: '16px 18px 0', marginBottom: 12 } : undefined}>
           <div>

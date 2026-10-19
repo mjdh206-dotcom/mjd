@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
-import { useStore, addStocktake, addRoast, lowStockItems, expiringItems } from '../store'
+import { useStore, addStocktake, addRoast, lowStockItems, expiringItems, applyStocktakes } from '../store'
 import { money, parseAmount, fmtDate, todayISO, daysUntil, UNITS, fmtQty } from '../utils'
-import { Card, Empty, Field, PageHead, Seg, StatusBadge } from '../components'
+import { Card, Empty, Field, PageHead, Seg, StatusBadge, Modal } from '../components'
 import { Icon } from '../icons'
 
 export default function Inventory({ onToast }) {
   const s = useStore()
   const [tab, setTab] = useState('overview')
+  const [bulkOpen, setBulkOpen] = useState(false)
   const low = lowStockItems()
   const exp = expiringItems(45)
   const value = s.items.reduce((a, i) => a + i.stock * (i.cost || 0), 0)
@@ -15,7 +16,10 @@ export default function Inventory({ onToast }) {
 
   return (
     <div className="grid" style={{ gap: 16 }}>
-      <PageHead title="المخزون والتحميص" subtitle="جرد دقيق، تحميص القهوة، وتتبع كل حركة مخزون" />
+      <PageHead title="المخزون والتحميص" subtitle="جرد دقيق، تحميص القهوة، وتتبع كل حركة مخزون"
+        actions={<button className="btn btn-gold" onClick={() => setBulkOpen(true)}><Icon name="clipboardCheck" />جرد شامل</button>} />
+
+      {bulkOpen && <BulkStocktake items={s.items} onClose={() => setBulkOpen(false)} onSave={(entries) => { applyStocktakes(entries); setBulkOpen(false); onToast?.(`تم حفظ جرد ${entries.length} صنف`) }} />}
 
       <div className="grid g4">
         <div className="kpi"><div className="top"><span className="lbl">قيمة المخزون</span><span className="ic"><Icon name="warehouse" /></span></div><div className="val">{money(value, 'SYP', { bare: true })}</div><div className="foot">ل.س بسعر التكلفة</div></div>
@@ -278,5 +282,56 @@ function MovesTab() {
         </div>
       )}
     </Card>
+  )
+}
+
+
+function BulkStocktake({ items, onClose, onSave }) {
+  const [q, setQ] = useState('')
+  const [vals, setVals] = useState({})
+  const list = items.filter((i) => i.active && (!q || i.name.includes(q) || (i.barcode || '').includes(q)))
+  const entries = list
+    .filter((i) => vals[i.id] !== undefined && vals[i.id] !== '')
+    .map((i) => {
+      const n = Math.max(0, parseAmount(vals[i.id]))
+      const countedQty = i.unit === 'kg' ? Math.round(n * 1000) : Math.round(n)
+      return { itemId: i.id, systemQty: i.stock, countedQty }
+    })
+  return (
+    <Modal open onClose={onClose} title="جرد شامل" subtitle="أدخل الكمية الفعلية لكل صنف — اتركه فارغاً لتجاهله" icon="clipboardCheck" size="wide"
+      footer={<>
+        <button className="btn btn-gold" disabled={!entries.length} onClick={() => onSave(entries)}><Icon name="save" />حفظ الجرد ({entries.length})</button>
+        <button className="btn btn-ghost" onClick={onClose}>إلغاء</button>
+      </>}>
+      <div className="stack">
+        <div className="input-group">
+          <span style={{ paddingInlineStart: 12, color: 'var(--muted)', display: 'grid', placeItems: 'center' }}><Icon name="search" size={16} /></span>
+          <input className="input" placeholder="ابحث باسم الصنف أو الباركود…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <div className="table-wrap" style={{ maxHeight: 460 }}>
+          <table>
+            <thead><tr><th>الصنف</th><th>الوحدة</th><th className="num">المخزون الحالي</th><th style={{ width: 130 }}>الكمية الفعلية</th><th>الفرق</th></tr></thead>
+            <tbody>
+              {list.map((i) => {
+                const v = vals[i.id]
+                const n = Math.max(0, parseAmount(v || 0))
+                const counted = i.unit === 'kg' ? n * 1000 : n
+                const diff = (v === undefined || v === '') ? null : counted - i.stock
+                return (
+                  <tr key={i.id}>
+                    <td><b className="small">{i.name}</b><div className="tiny muted">{i.barcode}</div></td>
+                    <td className="small">{UNITS[i.unit]?.name}</td>
+                    <td className="num small muted">{i.unit === 'kg' ? `${(i.stock / 1000).toLocaleString('en-US', { maximumFractionDigits: 2 })} كغ` : i.stock}</td>
+                    <td><input className="input price-input" inputMode="decimal" placeholder="—" value={v ?? ''} onChange={(e) => setVals({ ...vals, [i.id]: e.target.value })} /></td>
+                    <td>{diff === null ? <span className="tiny muted">—</span> : diff === 0 ? <span className="badge badge-green">مطابق</span> : <span className={`badge ${diff > 0 ? 'badge-blue' : 'badge-red'}`}>{diff > 0 ? '+' : ''}{i.unit === 'kg' ? `${(diff / 1000).toLocaleString('en-US', { maximumFractionDigits: 3 })} كغ` : diff}</span>}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="tiny muted">الكميات تُدخل بوحدة الصنف (كيلو للأوزان، قطعة/علبة للمعدود). سيُسجَّل فرق الجرد في سجل الحركات.</div>
+      </div>
+    </Modal>
   )
 }

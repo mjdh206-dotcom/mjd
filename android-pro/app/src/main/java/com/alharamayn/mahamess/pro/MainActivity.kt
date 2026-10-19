@@ -322,7 +322,7 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface
-        fun appVersion(): String = "2.0.0"
+        fun appVersion(): String = "2.1.0"
     }
 
     private fun toastMsg(msg: String) {
