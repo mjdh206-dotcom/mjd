@@ -10,7 +10,10 @@ import '@fontsource/amiri/700.css'
 import './index.css'
 import App from './App'
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
+// داخل تطبيق أندرويد تُعطَّل العامل الخدمي لتفادي النسخ المخزَّنة القديمة
+if (typeof window !== 'undefined' && window.AndroidApp) document.documentElement.classList.add('native')
+
+if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.AndroidApp) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}))
 }
 

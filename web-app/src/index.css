@@ -794,3 +794,8 @@ html[dir="rtl"] .drawer{animation-name:slideInRtl}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
 .skeleton{background:linear-gradient(90deg,var(--surface-2) 25%,var(--surface-3) 50%,var(--surface-2) 75%);background-size:200% 100%;animation:sk 1.4s infinite;border-radius:8px}
 @keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ---------- داخل تطبيق أندرويد ---------- */
+html.native .install-prompt{display:none!important}
+html.native body{overscroll-behavior-y:contain}
+html.native .table-wrap{-webkit-overflow-scrolling:touch}
