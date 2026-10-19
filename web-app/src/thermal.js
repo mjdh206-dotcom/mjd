@@ -95,10 +95,10 @@ function toRaster(canvas) {
 }
 
 export async function printThermal(data) {
-  if (window.AndroidApp?.printImageBase64) {
+  if (window.AndroidApp?.printThermal) {
     try {
       const canvas = buildCanvas(data)
-      window.AndroidApp.printImageBase64(canvas.toDataURL('image/png'))
+      window.AndroidApp.printThermal(canvas.toDataURL('image/png'))
       return 'جارٍ إرسال الفاتورة إلى الطابعة…'
     } catch { return 'تعذر تجهيز الفاتورة للطابعة' }
   }

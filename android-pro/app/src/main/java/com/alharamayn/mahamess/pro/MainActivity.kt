@@ -1,7 +1,13 @@
 package com.alharamayn.mahamess.pro
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.AlertDialog
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothSocket
+import android.content.pm.PackageManager
 import android.content.ContentValues
 import android.content.Intent
 import android.net.Uri
@@ -9,6 +15,9 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.print.PrintAttributes
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.print.PrintManager
 import android.provider.MediaStore
 import android.speech.RecognizerIntent
@@ -22,6 +31,8 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.webkit.WebViewAssetLoader
 import java.io.File
@@ -41,6 +52,7 @@ class MainActivity : Activity() {
     private lateinit var web: WebView
     private var pendingSpeech = false
     private var fileCallback: ValueCallback<Array<Uri>>? = null
+    private var pendingThermal: String? = null
 
     // تقديم حزمة الويب عبر أصل https آمن بدل file:// — يضمن عمل وحدات ES والتخزين المحلي.
     private val assetLoader by lazy {
@@ -170,6 +182,14 @@ class MainActivity : Activity() {
         return super.onKeyDown(keyCode, event)
     }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQ_BT_PERM) {
+            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) choosePrinter()
+            else toastMsg("يلزم السماح بالوصول للبلوتوث للطباعة")
+        }
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQ_FILE) {
@@ -275,6 +295,21 @@ class MainActivity : Activity() {
             }
         }
 
+        /** طباعة إيصال حراري على طابعة بلوتوث (ESC/POS). */
+        @JavascriptInterface
+        fun printThermal(dataUrl: String) {
+            pendingThermal = dataUrl
+            runOnUiThread {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    ActivityCompat.requestPermissions(this@MainActivity, arrayOf(Manifest.permission.BLUETOOTH_CONNECT), REQ_BT_PERM)
+                } else {
+                    choosePrinter()
+                }
+            }
+        }
+
         @JavascriptInterface
         fun toast(message: String) {
             runOnUiThread { Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show() }
@@ -284,8 +319,101 @@ class MainActivity : Activity() {
         fun appVersion(): String = "2.0.0"
     }
 
+    private fun toastMsg(msg: String) {
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+    }
+
+    /** اختيار طابعة من الأجهزة المقترنة ثم بدء الإرسال. */
+    private fun choosePrinter() {
+        val data = pendingThermal ?: return
+        val adapter = try { BluetoothAdapter.getDefaultAdapter() } catch (_: Exception) { null }
+        if (adapter == null) { toastMsg("الجهاز لا يدعم البلوتوث"); pendingThermal = null; return }
+        if (!adapter.isEnabled) { toastMsg("فعّل البلوتوث أولاً"); pendingThermal = null; return }
+        val bonded = try { adapter.bondedDevices.toList() } catch (_: SecurityException) { emptyList() }
+        if (bonded.isEmpty()) { toastMsg("لا توجد طابعة مقترنة — اقترن بها من إعدادات البلوتوث"); pendingThermal = null; return }
+
+        val saved = getSharedPreferences("printer", MODE_PRIVATE).getString("address", null)
+        val known = bonded.firstOrNull { it.address == saved }
+        if (known != null) { sendThermal(known, data); return }
+
+        val names = bonded.map { it.name ?: it.address }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("اختر طابعة الإيصالات")
+            .setItems(names) { _, which ->
+                val device = bonded[which]
+                getSharedPreferences("printer", MODE_PRIVATE).edit().putString("address", device.address).apply()
+                sendThermal(device, data)
+            }
+            .setOnCancelListener { pendingThermal = null }
+            .show()
+    }
+
+    /** تحويل صورة الإيصال إلى أوامر ESC/POS وإرسالها على خيط منفصل. */
+    private fun sendThermal(device: BluetoothDevice, dataUrl: String) {
+        pendingThermal = null
+        Thread {
+            var socket: BluetoothSocket? = null
+            try {
+                val base64 = dataUrl.substringAfter(",", dataUrl)
+                val bytes = Base64.decode(base64, Base64.DEFAULT)
+                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    ?: throw IllegalStateException("صورة غير صالحة")
+                val command = escPosRaster(bitmap)
+                socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
+                socket.connect()
+                socket.outputStream.use { out ->
+                    out.write(byteArrayOf(0x1B, 0x40))      // init
+                    out.write(command)
+                    out.write(byteArrayOf(0x0A, 0x0A, 0x0A)) // feed
+                    out.write(byteArrayOf(0x1D, 0x56, 0x00)) // cut
+                    out.flush()
+                }
+                runOnUiThread { toastMsg("تم إرسال الإيصال إلى ${device.name ?: "الطابعة"}") }
+            } catch (e: Exception) {
+                runOnUiThread { toastMsg("تعذر الاتصال بالطابعة — تأكد من تشغيلها واقترانها") }
+            } finally {
+                try { socket?.close() } catch (_: Exception) {}
+            }
+        }.start()
+    }
+
+    /** ESC/POS GS v 0: تحويل الصورة إلى أبيض/أسود بعرض 576 أو 384 نقطة. */
+    private fun escPosRaster(source: Bitmap): ByteArray {
+        val targetWidth = if (source.width > 420) 576 else 384
+        val ratio = targetWidth.toFloat() / source.width
+        val width = targetWidth
+        val height = (source.height * ratio).toInt().coerceAtLeast(1)
+        val scaled = Bitmap.createScaledBitmap(source, width, height, true)
+        val bytesPerRow = (width + 7) / 8
+        val out = java.io.ByteArrayOutputStream()
+        var y = 0
+        while (y < height) {
+            val band = minOf(255, height - y)
+            out.write(byteArrayOf(0x1D, 0x76, 0x30, 0x00, (bytesPerRow and 0xFF).toByte(), ((bytesPerRow shr 8) and 0xFF).toByte(), (band and 0xFF).toByte(), ((band shr 8) and 0xFF).toByte()))
+            for (row in 0 until band) {
+                var current = 0
+                var bit = 0
+                for (x in 0 until width) {
+                    val pixel = scaled.getPixel(x, y + row)
+                    val gray = (Color.red(pixel) * 0.299 + Color.green(pixel) * 0.587 + Color.blue(pixel) * 0.114)
+                    val alpha = Color.alpha(pixel)
+                    val black = alpha > 40 && gray < 150
+                    if (black) current = current or (0x80 shr bit)
+                    bit++
+                    if (bit == 8) { out.write(current); current = 0; bit = 0 }
+                }
+                if (bit > 0) out.write(current)
+            }
+            y += band
+        }
+        scaled.recycle()
+        return out.toByteArray()
+    }
+
     companion object {
         private const val REQ_SPEECH = 4701
         private const val REQ_FILE = 4702
+        private const val REQ_BT_PERM = 4703
+        private val SPP_UUID: java.util.UUID = java.util.UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
     }
 }
