@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore, cancelInvoice } from '../store'
-import { money, fmtDate, fmtQty, lineTotal, CURRENCIES, rateToNumber, saveBlob } from '../utils'
+import { money, fmtDate, fmtQty, lineTotal, CURRENCIES, rateToNumber, saveBlob, openPrintWindow, openExternal } from '../utils'
 import { Card, Modal, Field, StatusBadge, PageHead } from '../components'
 import { Icon, BrandMark } from '../icons'
 import html2canvas from 'html2canvas'
@@ -56,7 +56,7 @@ export default function InvoiceView({ id, onBack, onToast, go }) {
   const shareWhatsApp = () => {
     const text = encodeURIComponent(shareText())
     const phone = (customer?.phone || '').replace(/\D/g, '')
-    window.open(phone ? `https://wa.me/${phone.startsWith('963') ? phone : '963' + phone.replace(/^0/, '')}?text=${text}` : `https://wa.me/?text=${text}`, '_blank')
+    openExternal(phone ? `https://wa.me/${phone.startsWith('963') ? phone : '963' + phone.replace(/^0/, '')}?text=${text}` : `https://wa.me/?text=${text}`)
   }
 
   const shareImage = async () => {
@@ -79,11 +79,9 @@ export default function InvoiceView({ id, onBack, onToast, go }) {
   }
 
   const printReceipt = () => {
-    const w = window.AndroidApp?.printHtml ? { document: { write: (h) => window.AndroidApp.printHtml(h), close() {} }, print() {} } : window.open('', '_blank', 'width=680,height=900')
-    if (!w) return onToast?.('اسمح بالنوافذ المنبثقة للطباعة', 'error')
     const rows = inv.lines.map((l) => `<tr><td>${l.name}</td><td>${fmtQty(l)}</td><td>${money(l.unitPrice, inv.currency, { bare: true })}</td><td>${money(lineTotal(l), inv.currency, { bare: true })}</td></tr>`).join('')
     const disc = inv.discount > 0 ? `<div class="row"><span>الخصم</span><span>- ${money(inv.discount, inv.currency)}</span></div>` : ''
-    w.document.write(`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>${inv.no}</title>
+    const html = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>${inv.no}</title>
       <style>
       @page{size:A5;margin:8mm} body{font-family:Tahoma,Arial,sans-serif;color:#2b1c12;margin:0}
       .wrap{max-width:150mm;margin:0 auto;border:1px solid #e4d8c4;padding:8mm}
@@ -116,8 +114,8 @@ export default function InvoiceView({ id, onBack, onToast, go }) {
       ${inv.status === 'cancelled' ? `<div style="text-align:center;margin-top:4mm"><span class="stamp">ملغاة — ${inv.cancelReason || ''}</span></div>` : ''}
       <div class="foot">${s.settings.invoiceFooter}<br>${s.settings.shopName} · ${s.settings.phone || ''}</div>
       ${qr ? `<div class="qr"><img src="${qr}"><div class="muted">امسح للتحقق من الفاتورة</div></div>` : ''}
-      </div><script>window.onload=()=>window.print()</script></body></html>`)
-    w.document.close()
+      </div><script>window.onload=()=>window.print()</script></body></html>`
+    if (!openPrintWindow(html)) onToast?.('تعذر فتح نافذة الطباعة', 'error')
   }
 
   const thermal = async () => {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useStore, reportFor, topItems } from '../store'
-import { money, todayISO, dayOffset, startOfMonth, fmtDate, convert, downloadCSV, CURRENCIES } from '../utils'
+import { money, todayISO, dayOffset, startOfMonth, fmtDate, convert, downloadCSV, CURRENCIES, openPrintWindow } from '../utils'
 import { Card, Empty, PageHead, Seg } from '../components'
 import { Icon } from '../icons'
 import { Bars, Donut, AreaChart } from '../charts'
@@ -108,9 +108,7 @@ export default function Reports({ onToast }) {
   const printReport = () => {
     const rowHtml = summaryRows.slice(1).map((r2) => `<tr><td>${r2[0]}</td><td>${money(r2[1], 'SYP')}</td><td>${money(r2[2], 'USD')}</td><td>${money(r2[3], 'SYP')}</td></tr>`).join('')
     const topHtml = top.map((t, i) => `<tr><td>${i + 1}</td><td>${t.name}</td><td>${t.qty.toLocaleString('en-US')}</td><td>${money(t.revenue, t.currency || 'SYP')}</td></tr>`).join('')
-    const w = window.open('', '_blank', 'width=900,height=1000')
-    if (!w) return onToast?.('اسمح بالنوافذ المنبثقة للطباعة', 'error')
-    w.document.write(`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>تقرير ${from} — ${to}</title>
+    const html = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>تقرير ${from} — ${to}</title>
       <style>body{font-family:Tahoma,Arial,sans-serif;color:#2b1c12;padding:30px} h1{font-size:24px;margin:0;color:#241710} .muted{color:#8b7967;font-size:11px}
       .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #c2983f;padding-bottom:12px;margin-bottom:16px}
       .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}.kpi{border:1px solid #e6dcc9;border-radius:8px;padding:10px}.kpi b{display:block;font-size:15px;margin-top:4px}
@@ -123,8 +121,8 @@ export default function Reports({ onToast }) {
       <div class="kpis"><div class="kpi">صافي بعد المصاريف والمسحوبات<b>${money(net, 'SYP')}</b></div><div class="kpi">متوسط الفاتورة<b>${money(avg, 'SYP')}</b></div><div class="kpi">هامش الربح<b>${margin.toFixed(1)}%</b></div><div class="kpi">أفضل زبون<b>${topCustomers[0]?.name || '—'}</b></div></div>
       <h2>الأكثر مبيعاً</h2><table><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>الإيراد</th></tr></thead><tbody>${topHtml || '<tr><td colspan="4">لا مبيعات</td></tr>'}</tbody></table>
       <p class="muted" style="text-align:center;margin-top:26px">${s.settings.invoiceFooter} — تم إنشاء التقرير بواسطة نظام ${s.settings.shopName}</p>
-      <script>window.onload=()=>window.print()</script></body></html>`)
-    w.document.close()
+      <script>window.onload=()=>window.print()</script></body></html>`
+    if (!openPrintWindow(html)) onToast?.('تعذر فتح نافذة الطباعة', 'error')
   }
 
   return (

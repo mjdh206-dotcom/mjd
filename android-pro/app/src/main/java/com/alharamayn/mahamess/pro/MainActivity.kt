@@ -310,6 +310,12 @@ class MainActivity : Activity() {
             }
         }
 
+        /** فتح رابط خارجي (واتساب/هاتف/بريد) في التطبيق المناسب. */
+        @JavascriptInterface
+        fun openUrl(url: String) {
+            runOnUiThread { openExternally(url) }
+        }
+
         @JavascriptInterface
         fun toast(message: String) {
             runOnUiThread { Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show() }

@@ -246,3 +246,26 @@ export function downloadCSV(filename, rows) {
 }
 
 export function printPage() { window.print() }
+
+/** فتح صفحة للطباعة: عبر جسر أندرويد إن وُجد، وإلا نافذة جديدة. */
+export function openPrintWindow(html) {
+  if (window.AndroidApp?.printHtml) {
+    window.AndroidApp.printHtml(html)
+    return true
+  }
+  const w = window.open('', '_blank', 'width=880,height=980')
+  if (!w) return false
+  w.document.write(html)
+  w.document.close()
+  setTimeout(() => { try { w.focus(); w.print() } catch { /* ignore */ } }, 350)
+  return true
+}
+
+/** فتح رابط خارجي (واتساب…) عبر جسر أندرويد إن وُجد. */
+export function openExternal(url) {
+  if (window.AndroidApp?.openUrl) {
+    window.AndroidApp.openUrl(url)
+    return
+  }
+  window.open(url, '_blank', 'noopener')
+}

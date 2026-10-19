@@ -14,6 +14,18 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}))
 }
 
+// التقاط الروابط الخارجية داخل تطبيق أندرويد وفتحها في التطبيق المناسب
+document.addEventListener('click', (e) => {
+  const a = e.target?.closest?.('a[href]')
+  if (!a) return
+  const href = a.getAttribute('href') || ''
+  if (/^https?:/i.test(href) && !href.includes('appassets.androidplatform.net')) {
+    e.preventDefault()
+    if (window.AndroidApp?.openUrl) window.AndroidApp.openUrl(href)
+    else window.open(href, '_blank', 'noopener')
+  }
+}, true)
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />

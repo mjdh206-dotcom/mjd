@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useStore, saveCustomer, savePayment, partyStats } from '../store'
-import { money, parseAmount, fmtDate, todayISO, CURRENCIES, rateToNumber, convert } from '../utils'
+import { money, parseAmount, fmtDate, todayISO, CURRENCIES, openPrintWindow, openExternal } from '../utils'
 import { Card, Empty, Field, Modal, Drawer, PageHead, StatusBadge, Avatar, Money, Seg } from '../components'
 import { Icon } from '../icons'
 
@@ -205,9 +205,7 @@ function StatementDrawer({ customer, onClose, onPay, onToast, go, store }) {
 
   const printStatement = () => {
     const rows = entries.map((e) => `<tr><td>${e.date}</td><td>${e.label}</td><td>${e.debit ? money(e.debit, cur) : '—'}</td><td>${e.credit ? money(e.credit, cur) : '—'}</td><td>${money(e.running, cur)}</td></tr>`).join('')
-    const w = window.open('', '_blank', 'width=720,height=900')
-    if (!w) return onToast?.('اسمح بالنوافذ المنبثقة للطباعة', 'error')
-    w.document.write(`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>كشف حساب — ${customer.name}</title>
+    const html = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>كشف حساب — ${customer.name}</title>
       <style>body{font-family:Tahoma,Arial,sans-serif;padding:30px;color:#2b1c12}h1{font-size:22px;margin:0} .muted{color:#8b7967;font-size:11px}table{width:100%;border-collapse:collapse;margin-top:18px;font-size:12px}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:right}th{background:#f6f0e4} .tot{margin-top:16px;padding:12px;border:1px solid #c2983f;border-radius:8px;display:flex;justify-content:space-between;font-weight:bold}</style></head>
       <body><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><h1>${s.settings.shopName}</h1><div class="muted">${s.settings.address || ''} · ${s.settings.phone || ''}</div></div><div class="muted">${new Date().toLocaleDateString('ar-SY')}</div></div>
       <hr style="border:0;border-top:2px solid #c2983f;margin:14px 0">
@@ -215,13 +213,13 @@ function StatementDrawer({ customer, onClose, onPay, onToast, go, store }) {
       <table><thead><tr><th>التاريخ</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead><tbody>${rows || '<tr><td colspan="5">لا حركات</td></tr>'}</tbody></table>
       <div class="tot"><span>الرصيد النهائي</span><span>${money(st.balances[cur], cur)}</span></div>
       <p class="muted" style="margin-top:20px;text-align:center">${s.settings.invoiceFooter}</p>
-      <script>window.onload=()=>window.print()</script></body></html>`)
-    w.document.close()
+      <script>window.onload=()=>window.print()</script></body></html>`
+    if (!openPrintWindow(html)) onToast?.('تعذر فتح نافذة الطباعة', 'error')
   }
 
   const wa = () => {
     const phone = (customer.phone || '').replace(/\D/g, '')
-    window.open(phone ? `https://wa.me/${phone.startsWith('963') ? phone : '963' + phone.replace(/^0/, '')}?text=${encodeURIComponent(shareText())}` : `https://wa.me/?text=${encodeURIComponent(shareText())}`, '_blank')
+    openExternal(phone ? `https://wa.me/${phone.startsWith('963') ? phone : '963' + phone.replace(/^0/, '')}?text=${encodeURIComponent(shareText())}` : `https://wa.me/?text=${encodeURIComponent(shareText())}`)
   }
 
   return (
