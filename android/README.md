@@ -1,10 +1,11 @@
 # ريموت المكيف برو — AC Remote Pro
 
-**تحميل APK (الأحدث 1.1.1):** [ACRemotePro-1.1.1.apk](https://github.com/mjdh206-dotcom/mjd/raw/arena/18a8441b-mjd/android/ACRemotePro-1.1.1.apk)
+**تحميل APK (الأحدث 1.1.2):** [ACRemotePro-1.1.2.apk](https://github.com/mjdh206-dotcom/mjd/raw/arena/18a8441b-mjd/android/ACRemotePro-1.1.2.apk)
 
-**الإصدار السابق:** [ACRemotePro-1.1.0.apk](https://github.com/mjdh206-dotcom/mjd/raw/arena/18a8441b-mjd/android/ACRemotePro-1.1.0.apk)
+**إصدارات سابقة:** [ACRemotePro-1.1.0.apk](https://github.com/mjdh206-dotcom/mjd/raw/arena/18a8441b-mjd/android/ACRemotePro-1.1.0.apk) · [ACRemotePro-1.0.0.apk](https://github.com/mjdh206-dotcom/mjd/raw/arena/18a8441b-mjd/android/ACRemotePro-1.0.0.apk)
 
-**الإصدار السابق:** [ACRemotePro-1.0.0.apk](https://github.com/mjdh206-dotcom/mjd/raw/arena/18a8441b-mjd/android/ACRemotePro-1.0.0.apk)
+> ملاحظة: إصدار 1.1.1 سُحب بسبب خطأ في تغليف `resources.arsc` (كان مضغوطًا) يمنع التثبيت على أندرويد 11+.
+> النسخة 1.1.2 تحتوي نفس التصحيحات مع تغليف سليم (resources.arsc غير مضغوط ومحاذى 4 بايت).
 
 تطبيق أندرويد عربي (RTL) للتحكم في المكيفات عبر باعث الأشعة تحت الحمراء المدمج في الهاتف.
 
@@ -24,7 +25,7 @@ Sharp · Hitachi · Fujitsu · Carrier · Electra · Kelvinator  (17 بروتو�
 
 > تمت برمجة الأكواد اعتمادًا على مواصفات مشروع IRremoteESP8266 مفتوح المصدر.
 
-## ما الجديد في 1.1.1
+## ما الجديد في 1.1.1 / 1.1.2
 - تدقيق كامل لبصمات البايتات (mode / temp / fan / power / checksum) في البروتوكولات الـ17
   مقابل مكتبة IRremoteESP8266: صُحّحت Midea وSamsung وTCL وHaier وPanasonic وMitsubishi
   وDaikin وFujitsu وSharp وHitachi وCarrier وElectra وCoolix.

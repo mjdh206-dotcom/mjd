@@ -6,7 +6,7 @@
 تطبيق أندرويد عربي للتحكم في المكيفات عبر الأشعة تحت الحمراء، مع بحث ذكي يتعرّف على البروتوكول تلقائيًا.
 
 - كود المصدر: [`android/`](android/)
-- التحميل المباشر: [`ACRemotePro-1.1.1.apk`](https://github.com/mjdh206-dotcom/mjd/raw/arena/18a8441b-mjd/android/ACRemotePro-1.1.1.apk)
+- التحميل المباشر: [`ACRemotePro-1.1.2.apk`](https://github.com/mjdh206-dotcom/mjd/raw/arena/18a8441b-mjd/android/ACRemotePro-1.1.2.apk)
 - التفاصيل: [`android/README.md`](android/README.md)
 
 ## مشاريع أخرى
