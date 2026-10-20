@@ -67,7 +67,7 @@ private val Orange = Color(0xFFD77A35)
 private val PaleOrange = Color(0xFFFFE9D5)
 private val Line = Color(0xFFE9E5DB)
 private val ArabicFont = FontFamily(Font(R.font.tajawal_regular), Font(R.font.tajawal_medium, FontWeight.Medium), Font(R.font.tajawal_bold, FontWeight.Bold), Font(R.font.tajawal_extrabold, FontWeight.ExtraBold))
-private const val ORDER_CHANNEL = "haramain_orders"
+internal const val ORDER_CHANNEL = "haramain_orders"
 
 private data class Product(
     val id: String, val name: String, val category: String, val price: Double, val unit: String,
@@ -386,7 +386,7 @@ private fun Status(status: String) { Surface(color = if (status == "جديد") P
 @Composable
 private fun Empty(icon: String, title: String, hint: String) { Column(Modifier.fillMaxWidth().padding(38.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text(icon, fontSize = 38.sp); Text(title, color = Pine, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(top = 10.dp)); Text(hint, color = Muted, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp)) } }
 
-private fun createOrderChannel(context: Context, soundEnabled: Boolean) {
+internal fun createOrderChannel(context: Context, soundEnabled: Boolean) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         val sound = if (soundEnabled) RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) else null
         val attrs = if (soundEnabled) AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build() else null
