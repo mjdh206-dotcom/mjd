@@ -75,3 +75,4 @@ python3 tools/build_codes.py /path/to/Flipper-IRDB/TVs app/src/main/assets/codes
 - أيقونات Material — رخصة Apache 2.0.
 
 التطبيق مجاني، لا يجمع أي بيانات، ولا يحتاج حساباً أو اتصالاً بالإنترنت.
+

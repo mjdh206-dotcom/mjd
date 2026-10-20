@@ -65,7 +65,7 @@ jobs:
           retention-days: 90
 
       - name: حفظ APK في المستودع
-        if: steps.gradle_build.outcome == 'success' && inputs.commit_apk == true
+        if: steps.gradle_build.outcome == 'success' && (inputs.commit_apk == true || contains(github.event.head_commit.message, '[save-apk]'))
         run: |
           git config user.name "shuaa-build-bot"
           git config user.email "shuaa-build-bot@users.noreply.github.com"
