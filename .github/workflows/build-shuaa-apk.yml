@@ -1,0 +1,80 @@
+name: Build شُعاع APK
+
+on:
+  push:
+    paths:
+      - "shuaa-remote/**"
+      - ".github/workflows/build-shuaa-apk.yml"
+  workflow_dispatch:
+    inputs:
+      commit_apk:
+        description: "حفظ ملف APK داخل المستودع (مجلد dist)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: بناء ملف APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: تنزيل المستودع
+        uses: actions/checkout@v4
+
+      - name: تجهيز Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: تجهيز Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: بناء نسخة التطوير
+        id: gradle_build
+        continue-on-error: true
+        working-directory: shuaa-remote
+        run: |
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace assembleDebug 2>&1 | tee build.log
+
+      - name: حفظ سجل البناء عند الفشل
+        if: steps.gradle_build.outcome != 'success'
+        run: |
+          git config user.name "shuaa-build-bot"
+          git config user.email "shuaa-build-bot@users.noreply.github.com"
+          mkdir -p ci-logs
+          cp shuaa-remote/build.log ci-logs/last-build.log
+          grep -nE "e: file|e: |error:|FAILURE|What went wrong|Caused by|Unresolved|FAILED" shuaa-remote/build.log > ci-logs/errors.txt || true
+          git add -f ci-logs
+          git commit -m "ci: سجل بناء فاشل [skip ci]" || echo "لا تغييرات"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: رفع ملف APK
+        if: steps.gradle_build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: shuaa-remote-apk
+          path: shuaa-remote/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: حفظ APK في المستودع
+        if: steps.gradle_build.outcome == 'success' && (inputs.commit_apk == true || contains(github.event.head_commit.message, '[save-apk]'))
+        run: |
+          git config user.name "shuaa-build-bot"
+          git config user.email "shuaa-build-bot@users.noreply.github.com"
+          mkdir -p dist
+          cp shuaa-remote/app/build/outputs/apk/debug/app-debug.apk dist/shuaa-remote-1.0.0-debug.apk
+          git add -f dist/shuaa-remote-1.0.0-debug.apk
+          git commit -m "build: APK شُعاع 1.0.0 [skip ci]" || echo "لا تغييرات"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: إيقاف عند الفشل
+        if: steps.gradle_build.outcome != 'success'
+        run: exit 1
