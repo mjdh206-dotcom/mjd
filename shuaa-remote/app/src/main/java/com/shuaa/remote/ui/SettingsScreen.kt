@@ -114,14 +114,14 @@ fun SettingsScreen(vm: ShuaaViewModel, onBack: () -> Unit) {
                 title = "الاهتزاز عند الضغط",
                 subtitle = "إحساس ملموس كالريموت الحقيقي",
                 checked = settings.hapticsEnabled,
-                onChange = { settings.setHaptics(it) },
+                onChange = { settings.updateHaptics(it) },
             )
             Spacer(Modifier.height(10.dp))
             SettingSwitch(
                 title = "صوت الضغط",
                 subtitle = "نقرة خفيفة مع كل زر",
                 checked = settings.soundEnabled,
-                onChange = { settings.setSound(it) },
+                onChange = { settings.updateSound(it) },
             )
 
             Spacer(Modifier.height(20.dp))
@@ -160,7 +160,7 @@ fun SettingsScreen(vm: ShuaaViewModel, onBack: () -> Unit) {
                 title = "وضع المعاينة",
                 subtitle = "تجربة الواجهة والأزرار بدون إرسال فعلي",
                 checked = settings.demoMode,
-                onChange = { settings.setDemoMode(it) },
+                onChange = { settings.updateDemoMode(it) },
             )
 
             Spacer(Modifier.height(20.dp))

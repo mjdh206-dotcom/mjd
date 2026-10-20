@@ -22,22 +22,22 @@ class SettingsStore(context: Context) {
     var demoMode by mutableStateOf(prefs.getBoolean(KEY_DEMO, false))
         private set
 
-    fun setHaptics(value: Boolean) {
+    fun updateHaptics(value: Boolean) {
         hapticsEnabled = value
         prefs.edit().putBoolean(KEY_HAPTICS, value).apply()
     }
 
-    fun setSound(value: Boolean) {
+    fun updateSound(value: Boolean) {
         soundEnabled = value
         prefs.edit().putBoolean(KEY_SOUND, value).apply()
     }
 
-    fun setBigButtons(value: Boolean) {
+    fun updateBigButtons(value: Boolean) {
         bigButtons = value
         prefs.edit().putBoolean(KEY_BIG, value).apply()
     }
 
-    fun setDemoMode(value: Boolean) {
+    fun updateDemoMode(value: Boolean) {
         demoMode = value
         prefs.edit().putBoolean(KEY_DEMO, value).apply()
     }
