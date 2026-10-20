@@ -21,6 +21,9 @@ cd shuaa-remote
 
 [تحميل تطبيق محمصة الدار التجريبي](https://github.com/mjdh206-dotcom/mjd/raw/refs/heads/arena/4cd5a3f7-mjd/dist/aldar-store-1.0.0-debug.apk)
 
+- نسخة طباعة A5 للـQR: `dist/aldar-download-qr-poster-a5.pdf`
+- صورة الملصق والرمز منفرداً: `dist/aldar-download-qr-poster.png` و`dist/aldar-download-qr.png`
+
 
 ## ملاحظة مهمة قبل استقبال زبائن حقيقيين
 
