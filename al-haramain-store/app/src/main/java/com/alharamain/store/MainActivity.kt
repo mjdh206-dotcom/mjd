@@ -243,7 +243,7 @@ private fun SettingsPage(prefs: android.content.SharedPreferences, onTest: (Stri
 private fun ProductEditorDialog(product: Product?, onDismiss: () -> Unit, onSave: (Product) -> Unit) {
     var name by remember(product) { mutableStateOf(product?.name ?: "") }
     var category by remember(product) { mutableStateOf(product?.category ?: "مكسرات") }
-    var price by remember(product) { mutableStateOf(product?.price?.let { it.toLong().toString() } ?: "") }
+    var price by remember(product) { mutableStateOf(product?.price?.toLong()?.toString() ?: "") }
     var unit by remember(product) { mutableStateOf(product?.unit ?: "١٠٠ غرام") }
     var desc by remember(product) { mutableStateOf(product?.description ?: "طازج ومنتقى بعناية") }
     var emoji by remember(product) { mutableStateOf(product?.emoji ?: "🥜") }
@@ -252,20 +252,59 @@ private fun ProductEditorDialog(product: Product?, onDismiss: () -> Unit, onSave
     var image by remember(product) { mutableStateOf(product?.image ?: "") }
     val context = LocalContext.current
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if (uri != null) { runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }; image = uri.toString() }
+        if (uri != null) {
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            image = uri.toString()
+        }
     }
     val numericPrice = price.replace(',', '.').toDoubleOrNull()
-    AlertDialog(onDismissRequest = onDismiss, containerColor = Cream, shape = RoundedCornerShape(22.dp), title = { Text(if (product == null) "إضافة منتج" else "تعديل المنتج", color = Pine, fontWeight = FontWeight.Bold) }, text = {
-        Column(Modifier.heightIn(max = 540.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Surface(onClick = { picker.launch(arrayOf("image/*")) }, color = Paper, shape = RoundedCornerShape(13.dp)) { Row(Modifier.fillMaxWidth().padding(9.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(50.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFF2EEE5))) { ProductImage(image, emoji, Modifier.fillMaxSize()) }; Text(if (image.isBlank()) "اختيار صورة المنتج" else "تغيير الصورة", Modifier.padding(start = 10.dp), color = Pine, fontSize = 12.sp); Spacer(Modifier.weight(1f)); Text("＋", color = Orange, fontSize = 22.sp) } }
-            OutlinedTextField(name, { name = it }, label = { Text("اسم المنتج") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-            OutlinedTextField(category, { category = it }, label = { Text("القسم") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) { OutlinedTextField(price, { price = it }, label = { Text("السعر · ل.س") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)); OutlinedTextField(unit, { unit = it }, label = { Text("الوزن") }, singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) }
-            OutlinedTextField(discount, { discount = it }, label = { Text("خصم % (0 بدون خصم)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-            OutlinedTextField(desc, { desc = it }, label = { Text("وصف المنتج") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(featured, { featured = it }); Text("منتج مميز", fontSize = 12.sp, color = Ink) }
-        }
-    }, confirmButton = { Button(onClick = { numericPrice?.takeIf { it > 0 }?.let { amount -> onSave(Product(product?.id ?: "", name.trim(), category.trim().ifBlank { "مكسرات" }, amount, unit.trim().ifBlank { "١٠٠ غرام" }, emoji, desc, featured, true, discount.toIntOrNull()?.coerceIn(0, 90) ?: 0, image)) } }, enabled = name.isNotBlank() && numericPrice != null && numericPrice > 0, colors = ButtonDefaults.buttonColors(containerColor = Pine), shape = RoundedCornerShape(12.dp)) { Text("حفظ المنتج") }, dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء", color = Muted) } })
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Cream,
+        shape = RoundedCornerShape(22.dp),
+        title = { Text(if (product == null) "إضافة منتج" else "تعديل المنتج", color = Pine, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(Modifier.heightIn(max = 540.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Surface(onClick = { picker.launch(arrayOf("image/*")) }, color = Paper, shape = RoundedCornerShape(13.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(9.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(50.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFF2EEE5))) {
+                            ProductImage(image, emoji, Modifier.fillMaxSize())
+                        }
+                        Text(if (image.isBlank()) "اختيار صورة المنتج" else "تغيير الصورة", Modifier.padding(start = 10.dp), color = Pine, fontSize = 12.sp)
+                        Spacer(Modifier.weight(1f))
+                        Text("＋", color = Orange, fontSize = 22.sp)
+                    }
+                }
+                OutlinedTextField(name, { name = it }, label = { Text("اسم المنتج") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                OutlinedTextField(category, { category = it }, label = { Text("القسم") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    OutlinedTextField(price, { price = it }, label = { Text("السعر · ل.س") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
+                    OutlinedTextField(unit, { unit = it }, label = { Text("الوزن") }, singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
+                }
+                OutlinedTextField(discount, { discount = it }, label = { Text("خصم % (0 بدون خصم)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                OutlinedTextField(desc, { desc = it }, label = { Text("وصف المنتج") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(featured, { featured = it })
+                    Text("منتج مميز", fontSize = 12.sp, color = Ink)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    numericPrice?.takeIf { it > 0 }?.let { amount ->
+                        val discountPercent = discount.toIntOrNull()?.coerceIn(0, 90) ?: 0
+                        onSave(Product(product?.id ?: "", name.trim(), category.trim().ifBlank { "مكسرات" }, amount, unit.trim().ifBlank { "١٠٠ غرام" }, emoji, desc, featured, true, discountPercent, image))
+                    }
+                },
+                enabled = name.isNotBlank() && numericPrice != null && numericPrice > 0,
+                colors = ButtonDefaults.buttonColors(containerColor = Pine),
+                shape = RoundedCornerShape(12.dp)
+            ) { Text("حفظ المنتج") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء", color = Muted) } }
+    )
 }
 
 @Composable
