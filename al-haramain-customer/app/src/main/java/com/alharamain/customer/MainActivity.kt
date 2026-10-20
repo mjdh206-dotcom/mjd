@@ -60,15 +60,15 @@ private data class ShopOrder(
 )
 
 private fun seedProducts() = listOf(
-    Product("p1", "فستق حلبي فاخر", "مكسرات", 8.50, "١٠٠ غرام", "🥜", "فستق محمّص باعتدال، طعم غني وجودة ممتازة", true),
-    Product("p2", "كاجو محمّص", "مكسرات", 7.00, "١٠٠ غرام", "🌰", "كاجو ذهبي محمّص طازجاً", true),
-    Product("p3", "قهوة عربية بالهيل", "قهوة", 12.00, "٢٥٠ غرام", "☕", "خلطة البيت، محمّصة يومياً", true),
-    Product("p4", "خلطة ضيافة الحرمين", "خلطات", 9.50, "٢٠٠ غرام", "🎁", "تشكيلة مكسرات فاخرة للضيافة", discountPercent = 15),
-    Product("p5", "لوز أمريكي", "مكسرات", 6.00, "١٠٠ غرام", "🥜"),
-    Product("p6", "بندق محمّص", "مكسرات", 7.50, "١٠٠ غرام", "🌰"),
-    Product("p7", "كاندي مشكّل", "كاندي", 4.00, "١٥٠ غرام", "🍬", "ألوان ونكهات يحبّها الكبار والصغار"),
-    Product("p8", "مقرمشات مشكلة", "مقرمشات", 3.50, "١٥٠ غرام", "🥨"),
-    Product("p9", "قهوة تركية", "قهوة", 10.00, "٢٥٠ غرام", "🫘")
+    Product("p1", "فستق حلبي فاخر", "مكسرات", 850.0, "١٠٠ غرام", "🥜", "فستق محمّص باعتدال، طعم غني وجودة ممتازة", true),
+    Product("p2", "كاجو محمّص", "مكسرات", 700.0, "١٠٠ غرام", "🌰", "كاجو ذهبي محمّص طازجاً", true),
+    Product("p3", "قهوة عربية بالهيل", "قهوة", 1200.0, "٢٥٠ غرام", "☕", "خلطة البيت، محمّصة يومياً", true),
+    Product("p4", "خلطة ضيافة الحرمين", "خلطات", 950.0, "٢٠٠ غرام", "🎁", "تشكيلة مكسرات فاخرة للضيافة", discountPercent = 15),
+    Product("p5", "لوز أمريكي", "مكسرات", 600.0, "١٠٠ غرام", "🥜"),
+    Product("p6", "بندق محمّص", "مكسرات", 750.0, "١٠٠ غرام", "🌰"),
+    Product("p7", "كاندي مشكّل", "كاندي", 400.0, "١٥٠ غرام", "🍬", "ألوان ونكهات يحبّها الكبار والصغار"),
+    Product("p8", "مقرمشات مشكلة", "مقرمشات", 350.0, "١٥٠ غرام", "🥨"),
+    Product("p9", "قهوة تركية", "قهوة", 1000.0, "٢٥٠ غرام", "🫘")
 )
 
 class MainActivity : ComponentActivity() {
@@ -276,7 +276,7 @@ private fun CheckoutDialog(products: List<Product>, cart: Map<String, Int>, onDi
 @Composable
 private fun EmptyState(emoji: String, title: String, message: String) { Column(Modifier.fillMaxWidth().padding(top = 44.dp, bottom = 36.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text(emoji, fontSize = 42.sp); Text(title, color = Pine, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp)); Text(message, color = Muted, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp, start = 24.dp, end = 24.dp)) } }
 
-private fun money(amount: Double): String = NumberFormat.getNumberInstance(Locale("ar")).apply { minimumFractionDigits = 2; maximumFractionDigits = 2 }.format(amount) + " €"
+private fun money(amount: Double): String = NumberFormat.getNumberInstance(Locale("ar")).apply { minimumFractionDigits = 0; maximumFractionDigits = 0 }.format(amount) + " ل.س"
 
 private fun loadOrders(prefs: android.content.SharedPreferences): List<ShopOrder> = try { val a = JSONArray(prefs.getString("orders", "[]")); (0 until a.length()).map { i -> val o = a.getJSONObject(i); val ls = o.getJSONArray("lines"); ShopOrder(o.getString("id"), o.getString("customer"), o.getString("phone"), o.optString("address", ""), (0 until ls.length()).map { j -> val l = ls.getJSONObject(j); OrderLine(l.getString("productId"), l.getString("name"), l.getInt("qty"), l.getDouble("price")) }, o.getDouble("total"), o.getString("status"), o.getString("created")) } } catch (_: Exception) { emptyList() }
 private fun ordersJson(orders: List<ShopOrder>) = JSONArray().apply { orders.forEach { o -> val lines = JSONArray().apply { o.lines.forEach { l -> put(JSONObject().put("productId", l.productId).put("name", l.name).put("qty", l.qty).put("price", l.price)) } }; put(JSONObject().put("id", o.id).put("customer", o.customer).put("phone", o.phone).put("address", o.address).put("lines", lines).put("total", o.total).put("status", o.status).put("created", o.created)) } }.toString()

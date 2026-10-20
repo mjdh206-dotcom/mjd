@@ -1,14 +1,15 @@
-name: Build تطبيق محامص الحرمين للزبائن
+name: بناء تطبيقي محامص الحرمين
 
 on:
   push:
     paths:
       - "al-haramain-customer/**"
+      - "al-haramain-store/**"
       - ".github/workflows/build-shuaa-apk.yml"
   workflow_dispatch:
     inputs:
       commit_apk:
-        description: "حفظ ملف APK داخل المستودع (مجلد dist)"
+        description: "حفظ ملفي APK في مجلد dist"
         type: boolean
         default: false
 
@@ -17,7 +18,7 @@ permissions:
 
 jobs:
   build:
-    name: بناء ملف APK
+    name: بناء APK الزبون والمتجر
     runs-on: ubuntu-latest
 
     steps:
@@ -34,14 +35,19 @@ jobs:
       - name: تجهيز Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: بناء نسخة التطوير
+      - name: بناء التطبيقين
         id: gradle_build
         continue-on-error: true
-        working-directory: al-haramain-customer
         run: |
-          chmod +x gradlew
           set -o pipefail
-          ./gradlew --no-daemon --stacktrace assembleDebug 2>&1 | tee build.log
+          (
+            cd al-haramain-customer
+            chmod +x gradlew
+            ./gradlew --no-daemon --stacktrace assembleDebug
+            cd ../al-haramain-store
+            chmod +x gradlew
+            ./gradlew --no-daemon --stacktrace assembleDebug
+          ) 2>&1 | tee ci-build.log
 
       - name: حفظ سجل البناء عند الفشل
         if: steps.gradle_build.outcome != 'success'
@@ -49,30 +55,33 @@ jobs:
           git config user.name "haramain-build-bot"
           git config user.email "haramain-build-bot@users.noreply.github.com"
           mkdir -p ci-logs
-          cp al-haramain-customer/build.log ci-logs/last-build.log
-          grep -nE "e: file|e: |error:|FAILURE|What went wrong|Caused by|Unresolved|FAILED" al-haramain-customer/build.log > ci-logs/errors.txt || true
+          cp ci-build.log ci-logs/last-build.log
+          grep -nE "e: file|e: |error:|FAILURE|What went wrong|Caused by|Unresolved|FAILED" ci-build.log > ci-logs/errors.txt || true
           git add -f ci-logs
           git commit -m "ci: سجل بناء فاشل [skip ci]" || echo "لا تغييرات"
           git push origin HEAD:${{ github.ref_name }}
 
-      - name: رفع ملف APK
+      - name: رفع ملفي APK
         if: steps.gradle_build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: al-haramain-customer-apk
-          path: al-haramain-customer/app/build/outputs/apk/debug/*.apk
+          name: al-haramain-android-apks
+          path: |
+            al-haramain-customer/app/build/outputs/apk/debug/app-debug.apk
+            al-haramain-store/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 90
 
-      - name: حفظ APK في المستودع
+      - name: حفظ ملفي APK في المستودع
         if: steps.gradle_build.outcome == 'success' && (inputs.commit_apk == true || contains(github.event.head_commit.message, '[save-apk]'))
         run: |
           git config user.name "haramain-build-bot"
           git config user.email "haramain-build-bot@users.noreply.github.com"
           mkdir -p dist
           cp al-haramain-customer/app/build/outputs/apk/debug/app-debug.apk dist/al-haramain-customer-1.0.0.apk
-          git add -f dist/al-haramain-customer-1.0.0.apk
-          git commit -m "build: APK زبائن محامص الحرمين 1.0.0 [skip ci]" || echo "لا تغييرات"
+          cp al-haramain-store/app/build/outputs/apk/debug/app-debug.apk dist/al-haramain-store-1.0.0.apk
+          git add -f dist/al-haramain-customer-1.0.0.apk dist/al-haramain-store-1.0.0.apk
+          git commit -m "build: APK زبائن وإدارة محامص الحرمين 1.0.0 [skip ci]" || echo "لا تغييرات"
           git push origin HEAD:${{ github.ref_name }}
 
       - name: إيقاف عند الفشل
