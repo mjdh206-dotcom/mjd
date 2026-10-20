@@ -1,0 +1,90 @@
+33:Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so.
+94:Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so.
+100:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:98:9 Unresolved reference 'createOrderChannel'.
+101:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:113:22 Unresolved reference 'showTestNotification'.
+102:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:115:21 Cannot infer type for this parameter. Please specify it explicitly.
+103:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:115:21 Not enough information to infer type argument for 'T'.
+104:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:115:21 Cannot infer type for this parameter. Please specify it explicitly.
+105:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:115:21 Not enough information to infer type argument for 'T'.
+106:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:115:30 Cannot infer type for this parameter. Please specify it explicitly.
+107:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:115:32 Cannot infer type for this parameter. Please specify it explicitly.
+108:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:115:32 Not enough information to infer type argument for 'T'.
+109:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:115:47 Unresolved reference 'loadProducts'.
+110:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:116:19 Cannot infer type for this parameter. Please specify it explicitly.
+111:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:116:19 Not enough information to infer type argument for 'T'.
+112:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:116:19 Cannot infer type for this parameter. Please specify it explicitly.
+113:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:116:19 Not enough information to infer type argument for 'T'.
+114:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:116:28 Cannot infer type for this parameter. Please specify it explicitly.
+115:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:116:30 Cannot infer type for this parameter. Please specify it explicitly.
+116:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:116:30 Not enough information to infer type argument for 'T'.
+117:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:116:45 Unresolved reference 'loadOrders'.
+118:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:121:61 Unresolved reference 'productsJson'.
+119:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:122:57 Unresolved reference 'ordersJson'.
+120:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:133:94 Overload resolution ambiguity between candidates:
+143:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:133:98 Cannot infer type for this parameter. Please specify it explicitly.
+144:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:133:104 Unresolved reference 'it'.
+145:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:133:123 Unresolved reference 'it'.
+146:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:133:152 Unresolved reference 'it'.
+147:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:134:152 Overload resolution ambiguity between candidates:
+170:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:134:156 Cannot infer type for this parameter. Please specify it explicitly.
+171:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:134:162 Unresolved reference 'it'.
+172:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:134:177 Unresolved reference 'it'.
+173:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:134:198 Unresolved reference 'it'.
+174:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:134:217 Unresolved reference 'it'.
+175:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:137:175 Overload resolution ambiguity between candidates:
+198:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:137:190 Unresolved reference 'name'.
+199:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:137:223 Overload resolution ambiguity between candidates:
+222:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:137:238 Unresolved reference 'salePrice'.
+223:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:137:269 Overload resolution ambiguity between candidates:
+246:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:137:284 Unresolved reference 'salePrice'.
+247:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:138:308 Unresolved reference 'showTestNotification'.
+248:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:147:238 Overload resolution ambiguity between candidates:
+271:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:147:248 Unresolved reference 'it'.
+272:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:147:282 Unresolved reference 'it'.
+273:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:158:212 Unresolved reference 'money'.
+274:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:165:38 Unresolved reference 'Empty'.
+275:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:185:107 Unresolved reference 'ProductImage'.
+276:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:186:188 Unresolved reference 'money'.
+277:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:198:31 Unresolved reference 'Empty'.
+278:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:206:291 Unresolved reference 'Status'.
+279:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:209:169 Unresolved reference 'money'.
+280:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:221:24 Unresolved reference 'showTestNotification'.
+281:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:229:514 Unresolved reference 'recreateOrderChannel'.
+282:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:232:24 Unresolved reference 'showTestNotification'.
+283:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:258:5 Inapplicable candidate(s): fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composable() ComposableFunction0<Unit>, modifier: Modifier = ..., dismissButton: @Composable() ComposableFunction0<Unit>? = ..., icon: @Composable() ComposableFunction0<Unit>? = ..., title: @Composable() ComposableFunction0<Unit>? = ..., text: @Composable() ComposableFunction0<Unit>? = ..., shape: Shape = ..., containerColor: Color = ..., iconContentColor: Color = ..., titleContentColor: Color = ..., textContentColor: Color = ..., tonalElevation: Dp = ..., properties: DialogProperties = ...): Unit
+284:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:258:116 @Composable invocations can only happen from the context of a @Composable function
+285:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:259:9 @Composable invocations can only happen from the context of a @Composable function
+286:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:260:305 Unresolved reference 'ProductImage'.
+287:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:268:26 @Composable invocations can only happen from the context of a @Composable function
+288:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:268:408 @Composable invocations can only happen from the context of a @Composable function
+289:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:268:502 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
+290:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:268:522 @Composable invocations can only happen from the context of a @Composable function
+291:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:268:588 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
+292:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:269:2 Syntax error: Expecting ','.
+293:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:271:1 Anonymous functions with names are prohibited.
+294:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:272:1 Modifier 'private' is not applicable to 'local function'.
+295:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:277:2 Syntax error: Expecting ','.
+296:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:279:1 Anonymous functions with names are prohibited.
+297:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:280:1 Modifier 'private' is not applicable to 'local function'.
+298:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:280:326 Syntax error: Expecting ','.
+299:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:282:1 Anonymous functions with names are prohibited.
+300:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:283:1 Modifier 'private' is not applicable to 'local function'.
+301:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:285:1 Unresolved reference 'private'.
+302:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:285:9 Anonymous functions with names are prohibited.
+303:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:297:9 Anonymous functions with names are prohibited.
+304:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:303:9 Anonymous functions with names are prohibited.
+305:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:310:9 Anonymous functions with names are prohibited.
+306:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:312:1 Unresolved reference 'private'.
+307:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:312:9 Anonymous functions with names are prohibited.
+308:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:316:9 Anonymous functions with names are prohibited.
+309:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:317:1 Unresolved reference 'private'.
+310:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:317:9 Anonymous functions with names are prohibited.
+311:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:318:1 Unresolved reference 'private'.
+312:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:318:9 Anonymous functions with names are prohibited.
+313:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/MainActivity.kt:318:474 Syntax error: Expecting ')'.
+315:> Task :app:compileDebugKotlin FAILED
+318:FAILURE: Build failed with an exception.
+320:* What went wrong:
+363:Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+492:Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
+525:BUILD FAILED in 26s
