@@ -7,6 +7,10 @@ on:
       - ".github/workflows/build-shuaa-apk.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   build:
     name: بناء ملف APK
@@ -27,15 +31,44 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: بناء نسخة التطوير
+        id: gradle_build
+        continue-on-error: true
         working-directory: shuaa-remote
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --stacktrace assembleDebug
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace assembleDebug 2>&1 | tee build.log
+
+      - name: نشر ملخّص الأخطاء
+        if: steps.gradle_build.outcome == 'failure'
+        run: |
+          {
+            echo "### فشل بناء شُعاع"
+            echo '```text'
+            grep -nE "e: |error:|FAILURE|What went wrong|Caused by|Unresolved|> Task .*FAILED" shuaa-remote/build.log | head -120
+            echo '```'
+            echo ""
+            echo "<details><summary>آخر 120 سطراً</summary>"
+            echo ""
+            echo '```text'
+            tail -n 120 shuaa-remote/build.log
+            echo '```'
+            echo "</details>"
+          } > /tmp/report.md
+          gh issue create \
+            --title "build-log-${{ github.run_number }}" \
+            --body-file /tmp/report.md \
+            --repo "${{ github.repository }}"
 
       - name: رفع ملف APK
+        if: steps.gradle_build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: shuaa-remote-apk
           path: shuaa-remote/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 90
+
+      - name: إيقاف عند الفشل
+        if: steps.gradle_build.outcome == 'failure'
+        run: exit 1
