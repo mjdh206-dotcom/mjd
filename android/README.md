@@ -1,5 +1,7 @@
 # ريموت المكيف برو — AC Remote Pro
 
+**تحميل APK:** [ACRemotePro-1.0.0.apk](https://github.com/mjdh206-dotcom/mjd/raw/arena/18a8441b-mjd/android/ACRemotePro-1.0.0.apk)
+
 تطبيق أندرويد عربي (RTL) للتحكم في المكيفات عبر باعث الأشعة تحت الحمراء المدمج في الهاتف.
 
 ## المميزات
