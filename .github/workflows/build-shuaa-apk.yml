@@ -6,6 +6,11 @@ on:
       - "shuaa-remote/**"
       - ".github/workflows/build-shuaa-apk.yml"
   workflow_dispatch:
+    inputs:
+      commit_apk:
+        description: "حفظ ملف APK داخل المستودع (مجلد dist)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -58,6 +63,17 @@ jobs:
           path: shuaa-remote/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 90
+
+      - name: حفظ APK في المستودع
+        if: steps.gradle_build.outcome == 'success' && inputs.commit_apk == true
+        run: |
+          git config user.name "shuaa-build-bot"
+          git config user.email "shuaa-build-bot@users.noreply.github.com"
+          mkdir -p dist
+          cp shuaa-remote/app/build/outputs/apk/debug/app-debug.apk dist/shuaa-remote-1.0.0-debug.apk
+          git add -f dist/shuaa-remote-1.0.0-debug.apk
+          git commit -m "build: APK شُعاع 1.0.0 [skip ci]" || echo "لا تغييرات"
+          git push origin HEAD:${{ github.ref_name }}
 
       - name: إيقاف عند الفشل
         if: steps.gradle_build.outcome != 'success'
