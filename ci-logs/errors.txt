@@ -1,0 +1,10 @@
+37:Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so.
+93:Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so.
+101:> Task :app:compileDebugKotlin FAILED
+102:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/OrderMessagingService.kt:12:9 Cannot access 'fun createOrderChannel(context: Context, soundEnabled: Boolean): Unit': it is private in file.
+103:e: file:///home/runner/work/mjd/mjd/al-haramain-store/app/src/main/java/com/alharamain/store/OrderMessagingService.kt:14:61 Cannot access 'val ORDER_CHANNEL: String': it is private in file.
+106:FAILURE: Build failed with an exception.
+108:* What went wrong:
+151:Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+280:Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
+313:BUILD FAILED in 28s
