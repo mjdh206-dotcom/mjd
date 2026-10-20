@@ -1,11 +1,15 @@
 # ريموت المكيف برو — AC Remote Pro
 
-**تحميل APK:** [ACRemotePro-1.0.0.apk](https://github.com/mjdh206-dotcom/mjd/raw/arena/18a8441b-mjd/android/ACRemotePro-1.0.0.apk)
+**تحميل APK (الأحدث 1.1.0):** [ACRemotePro-1.1.0.apk](https://github.com/mjdh206-dotcom/mjd/raw/arena/18a8441b-mjd/android/ACRemotePro-1.1.0.apk)
+
+**الإصدار السابق:** [ACRemotePro-1.0.0.apk](https://github.com/mjdh206-dotcom/mjd/raw/arena/18a8441b-mjd/android/ACRemotePro-1.0.0.apk)
 
 تطبيق أندرويد عربي (RTL) للتحكم في المكيفات عبر باعث الأشعة تحت الحمراء المدمج في الهاتف.
 
 ## المميزات
-- **بحث ذكي**: يرسل أكواد اختبار لـ 11 بروتوكول مكيفات حتى يستجيب جهازك، ثم يحفظ النوع تلقائيًا.
+- **بحث تلقائي مستمر**: يرسل الأكواد واحدة بعد الأخرى لوحده (بلا ضغط أزرار)، وبمجرد سماع صوت من
+  المكيف تضغط زرًا واحدًا «وجدته» فيتوقف فورًا ويحفظ الكود. إن لم تجد في الجولة الأولى يعيد الكرّة
+  بالأكواد البديلة تلقائيًا.
 - **تحكم كامل**: تشغيل/إطفاء، تبريد، تدفئة، تجفيف، مروحة، وضع تلقائي، درجة الحرارة، سرعة المروحة،
   تأرجح عمودي/أفقي، تيربو، سكون، إضاءة الشاشة، ووضع اقتصادي.
 - **مؤقت إطفاء**: 30 دقيقة / ساعة / ساعتان / 4 ساعات (يعمل عبر AlarmManager حتى لو أُغلق التطبيق).
@@ -13,7 +17,8 @@
 - **واجهة ليلية عربية** بتصميم دائري متدرّج، بدون إنترنت وبدون إعلانات وبدون صلاحيات موقع.
 
 ## البروتوكولات المدعومة
-Gree · Midea · Coolix · LG · Samsung · TCL · Haier · Toshiba · Panasonic · Mitsubishi · Daikin
+Gree · Midea · Coolix · LG · Samsung · TCL · Haier · Toshiba · Panasonic · Mitsubishi · Daikin ·
+Sharp · Hitachi · Fujitsu · Carrier · Electra · Kelvinator  (17 بروتوكولًا + نسخ بديلة)
 
 > تمت برمجة الأكواد يدويًا اعتمادًا على مواصفات مشروع IRremoteESP8266 مفتوح المصدر.
 

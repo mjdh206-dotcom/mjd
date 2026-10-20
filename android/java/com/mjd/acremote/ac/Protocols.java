@@ -19,6 +19,12 @@ public final class Protocols {
         ALL.add(new PanasonicProtocol());
         ALL.add(new MitsubishiProtocol());
         ALL.add(new DaikinProtocol());
+        ALL.add(new SharpProtocol());
+        ALL.add(new HitachiProtocol());
+        ALL.add(new FujitsuProtocol());
+        ALL.add(new CarrierProtocol());
+        ALL.add(new ElectraProtocol());
+        ALL.add(new KelvinatorProtocol());
     }
 
     private Protocols() {

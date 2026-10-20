@@ -34,6 +34,7 @@ public class Receiver extends BroadcastReceiver {
         Profile profile = store.active();
         if (profile == null) return;
         Protocol protocol = Protocols.byId(profile.protocolId);
+        protocol.variant = profile.variant;
         AcState state = profile.toState();
         state.power = false;
         new IrBlaster(context).transmit(protocol.encode(state));

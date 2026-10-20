@@ -7,6 +7,7 @@ public class Profile {
     public String id;
     public String name;
     public String protocolId;
+    public int variant = 0;
     public int temp = 24;
     public int mode = AcState.MODE_COOL;
     public int fan = AcState.FAN_AUTO;

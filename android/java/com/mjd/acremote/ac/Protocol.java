@@ -28,6 +28,9 @@ public abstract class Protocol {
         this.supportsFan = supportsFan;
     }
 
+    /** Selected encoding variant (some brands use several code formats). */
+    public int variant = 0;
+
     public abstract Signal encode(AcState state);
 
     public AcState defaultState() {
@@ -50,7 +53,11 @@ public abstract class Protocol {
     }
 
     public Signal testSignal(int variant) {
-        return testSignal();
+        int previous = this.variant;
+        this.variant = variant;
+        Signal sig = encode(defaultState());
+        this.variant = previous;
+        return sig;
     }
 
     protected static int clamp(int v, int min, int max) {

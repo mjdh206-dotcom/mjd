@@ -14,19 +14,9 @@ public class GreeProtocol extends Protocol {
         super("gree", "جري", "Gree", 16, 30, true, true, true, true);
     }
 
-    private boolean forceModelA = true;
-
     @Override
     public int variantCount() {
         return 2;
-    }
-
-    @Override
-    public Signal testSignal(int variant) {
-        forceModelA = variant == 0;
-        Signal sig = encode(defaultState());
-        forceModelA = true;
-        return sig;
     }
 
     @Override
@@ -52,7 +42,7 @@ public class GreeProtocol extends Protocol {
         b[1] = (temp - 16) & 0x0F;                 // no timers
         b[2] = 0x20;                                // display light on
         if (s.turbo) b[2] |= 0x10;
-        if (s.power && forceModelA) b[2] |= 0x40;   // YAW1F model bit
+        if (s.power && variant == 0) b[2] |= 0x40;  // YAW1F model bit
         b[3] = 0x50;                                // constant
         int swingV = s.swingV ? 1 : 0;              // 1 = auto swing
         int swingH = s.swingH ? 1 : 0;

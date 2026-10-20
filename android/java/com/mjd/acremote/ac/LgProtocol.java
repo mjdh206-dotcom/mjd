@@ -15,6 +15,11 @@ public class LgProtocol extends Protocol {
     }
 
     @Override
+    public int variantCount() {
+        return 2;
+    }
+
+    @Override
     public Signal encode(AcState s) {
         int mode;
         switch (s.mode) {
@@ -45,6 +50,13 @@ public class LgProtocol extends Protocol {
         raw |= (sum & 0x0F);
 
         PulseBuilder p = new PulseBuilder();
+        if (variant == 1) {
+            // LG2 variant used by many LG split units.
+            p.mark(3200).space(9900);
+            p.bitsMSB(raw & 0x0FFFFFFFL, 28, 480, ONE_SPACE, ZERO_SPACE);
+            p.mark(480).space(MIN_GAP);
+            return p.build(38000);
+        }
         p.mark(HDR_MARK).space(HDR_SPACE);
         p.bitsMSB(raw & 0x0FFFFFFFL, 28, BIT_MARK, ONE_SPACE, ZERO_SPACE);
         p.mark(BIT_MARK).space(MIN_GAP);

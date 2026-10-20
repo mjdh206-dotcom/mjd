@@ -30,6 +30,7 @@ public final class Store {
                 p.id = o.optString("id", UUID.randomUUID().toString());
                 p.name = o.optString("name", "مكيف");
                 p.protocolId = o.optString("protocol", "gree");
+                p.variant = o.optInt("variant", 0);
                 p.temp = o.optInt("temp", 24);
                 p.mode = o.optInt("mode", 1);
                 p.fan = o.optInt("fan", 0);
@@ -55,6 +56,7 @@ public final class Store {
                 o.put("id", p.id);
                 o.put("name", p.name);
                 o.put("protocol", p.protocolId);
+                o.put("variant", p.variant);
                 o.put("temp", p.temp);
                 o.put("mode", p.mode);
                 o.put("fan", p.fan);

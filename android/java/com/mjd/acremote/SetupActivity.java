@@ -6,6 +6,8 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
@@ -26,6 +28,7 @@ import com.mjd.acremote.data.Store;
 import com.mjd.acremote.ir.IrBlaster;
 import com.mjd.acremote.ir.Signal;
 import com.mjd.acremote.ui.BackdropView;
+import com.mjd.acremote.ui.ScanBarView;
 import com.mjd.acremote.ui.Ui;
 
 import java.util.ArrayList;
@@ -43,6 +46,18 @@ public class SetupActivity extends Activity {
     private FrameLayout root;
     private LinearLayout content;
     private int step = STEP_WELCOME;
+
+    private static final long AUTO_GAP_MS = 1400;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private ScanBarView scanBar;
+    private TextView scanStatus;
+    private TextView scanCount;
+    private TextView autoButton;
+    private TextView scanInfo;
+    private boolean autoRunning = false;
+    private boolean found = false;
+    private int attemptCount = 0;
+    private int scanPass = 0;
 
     // scan state
     private boolean smartScan = true;
@@ -266,6 +281,10 @@ public class SetupActivity extends Activity {
     // ------------------------------------------------------------- test ----
 
     private void startScan() {
+        stopAuto();
+        found = false;
+        attemptCount = 0;
+        irWarned = false;
         scanList.clear();
         scanVariants.clear();
         scanIndex = 0;
@@ -282,94 +301,240 @@ public class SetupActivity extends Activity {
                 scanVariants.add(v);
             }
         }
+        scanPass = 0;
         showStep(STEP_TEST);
-        sendTest();
     }
 
     private void buildTest() {
-        content.addView(backRow(brandProtocol == null ? "البحث الذكي" : "تجربة " + brandProtocol.nameAr));
-        content.addView(gap(18));
-
         Protocol current = scanList.get(scanIndex);
         int total = scanList.size();
 
-        // progress
-        LinearLayout progress = Ui.row(this);
-        for (int i = 0; i < total; i++) {
-            View seg = new View(this);
-            int color = i < scanIndex ? Ui.ACCENT : (i == scanIndex ? 0xFF4F8DFF : 0xFF1C2B42);
-            seg.setBackground(Ui.round(color, 4, 0, 0, this));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 4), 1f);
-            lp.setMarginEnd(Ui.dp(this, 4));
-            progress.addView(seg, lp);
-        }
-        content.addView(progress);
+        content.addView(backRow(brandProtocol == null ? "البحث التلقائي" : "تجربة " + brandProtocol.nameAr));
         content.addView(gap(10));
-        TextView counter = Ui.text(this, (scanIndex + 1) + " / " + total, 11f, Ui.MUTED, false);
-        content.addView(counter);
-
-        content.addView(gap(26));
 
         LinearLayout card = card();
         card.setGravity(Gravity.CENTER);
-        TextView icon = Ui.text(this, "📡", 34f, Ui.TEXT, false);
+        card.setPadding(Ui.dp(this, 16), Ui.dp(this, 22), Ui.dp(this, 16), Ui.dp(this, 20));
+
+        TextView icon = Ui.text(this, "📡", 36f, Ui.TEXT, false);
         card.addView(icon);
-        card.addView(gap(10));
-        TextView name = Ui.text(this, smartScan ? "كود تجريبي رقم " + (scanIndex + 1)
-                : current.nameAr, 17f, Ui.TEXT, true);
-        card.addView(name);
+        card.addView(gap(8));
+
+        TextView title = Ui.text(this, "البحث التلقائي يعمل الآن", 16f, Ui.TEXT, true);
+        card.addView(title);
         card.addView(gap(6));
+
         TextView hint = Ui.text(this,
-                "وجّه الهاتف نحو المكيف ثم أرسل الإشارة.\nإذا صدر صوت من المكيف فاضغط «استجاب».",
+                "وجّه الهاتف نحو المكيف واتركه.\nسيرسل التطبيق الأكواد واحدة تلو الأخرى تلقائيًا.\nبمجرد صدور صوت من المكيف أو تغيّر حالته اضغط الزر الكبير.",
                 12f, Ui.MUTED, false);
         hint.setLineSpacing(Ui.dp(this, 4), 1f);
         card.addView(hint);
         content.addView(card);
 
         content.addView(gap(18));
+        scanBar = new ScanBarView(this);
+        content.addView(scanBar, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 10)));
+        content.addView(gap(8));
 
-        TextView send = primaryButton("📡  إرسال إشارة الاختبار");
-        send.setOnClickListener(v -> sendTest());
-        content.addView(send);
+        LinearLayout info = Ui.row(this);
+        scanStatus = Ui.text(this, "جارٍ التجربة…", 12f, Ui.TEXT, true);
+        scanStatus.setGravity(Gravity.START);
+        scanCount = Ui.text(this, "", 11f, Ui.MUTED, false);
+        info.addView(scanStatus, Ui.weight(1f));
+        info.addView(scanCount);
+        content.addView(info);
 
-        content.addView(gap(16));
+        content.addView(gap(18));
 
-        TextView q = Ui.text(this, "هل استجاب المكيف؟", 13f, Ui.TEXT, true);
-        content.addView(q);
+        // big "found it" button
+        TextView foundButton = Ui.text(this, "🛑  وجدته! أوقف البحث", 17f, 0xFF04120F, true);
+        foundButton.setBackground(Ui.gradient(Ui.ACCENT, 0xFF3BC8E8, 22, Ui.ACCENT, 0, this));
+        foundButton.setPadding(0, Ui.dp(this, 20), 0, Ui.dp(this, 20));
+        foundButton.setElevation(Ui.dp(this, 6));
+        foundButton.setOnClickListener(v -> {
+            if (found) return;
+            onSuccess();
+        });
+        content.addView(foundButton);
+
+        content.addView(gap(12));
+
+        autoButton = Ui.text(this, autoRunning ? "⏸  إيقاف مؤقت" : "▶  متابعة البحث التلقائي",
+                13f, Ui.TEXT, false);
+        autoButton.setBackground(Ui.round(Ui.CARD, 18, Ui.STROKE, 1, this));
+        autoButton.setPadding(0, Ui.dp(this, 14), 0, Ui.dp(this, 14));
+        autoButton.setOnClickListener(v -> toggleAuto());
+        content.addView(autoButton);
+
         content.addView(gap(10));
 
         LinearLayout answers = Ui.row(this);
-        TextView yes = Ui.text(this, "✓  نعم، استجاب", 14f, 0xFF04120F, true);
-        yes.setBackground(Ui.gradient(Ui.ACCENT, Ui.ACCENT, 18, Ui.ACCENT, 0, this));
-        yes.setPadding(0, Ui.dp(this, 15), 0, Ui.dp(this, 15));
-        yes.setOnClickListener(v -> onSuccess());
-        answers.addView(yes, Ui.weight(1f));
-
-        TextView no = Ui.text(this, "✕  لم يستجب", 14f, 0xFFFFB4B4, true);
+        TextView no = Ui.text(this, "✕  لم يستجب — التالي", 13f, 0xFFFFB4B4, true);
         no.setBackground(Ui.round(0xFF2A1720, 18, 0xFF5A2733, 1, this));
-        no.setPadding(0, Ui.dp(this, 15), 0, Ui.dp(this, 15));
-        no.setOnClickListener(v -> onNext());
-        LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        nlp.setMarginStart(Ui.dp(this, 10));
-        answers.addView(no, nlp);
+        no.setPadding(0, Ui.dp(this, 14), 0, Ui.dp(this, 14));
+        no.setOnClickListener(v -> {
+            if (found) return;
+            onNext();
+        });
+        answers.addView(no, Ui.weight(1f));
         content.addView(answers);
 
         content.addView(gap(14));
-        TextView manual = Ui.text(this, "العودة لاختيار العلامة", 12f, Ui.MUTED, false);
-        manual.setOnClickListener(v -> showStep(STEP_BRAND));
-        content.addView(manual);
+        scanInfo = Ui.text(this, "", 11.5f, 0xFF4C688C, false);
+        scanInfo.setLineSpacing(Ui.dp(this, 3), 1f);
+        content.addView(scanInfo);
+
+        updateScanLabels();
+        if (!autoRunning) startAuto();
     }
+
+    private Protocol currentProtocol() {
+        if (scanList.isEmpty()) return Protocols.all().get(0);
+        return scanList.get(Math.min(scanIndex, scanList.size() - 1));
+    }
+
+    private void updateScanLabels() {
+        if (scanStatus == null || scanCount == null) return;
+        int total = scanList.size();
+        scanStatus.setText(found ? "تم إيجاد الكود ✓" :
+                (autoRunning ? "جارٍ الإرسال التلقائي…" : "متوقف مؤقتًا"));
+        scanCount.setText((scanIndex + 1) + " / " + total + " · " + attemptCount + " إشارة");
+        if (scanBar != null) {
+            scanBar.setProgress(total == 0 ? 0 : (scanIndex + 1f) / total);
+        }
+        if (autoButton != null) {
+            autoButton.setText(autoRunning ? "⏸  إيقاف مؤقت" : "▶  متابعة البحث التلقائي");
+        }
+        if (scanInfo != null && !scanList.isEmpty()) {
+            Protocol p = scanList.get(Math.min(scanIndex, scanList.size() - 1));
+            String text = "الكود الحالي: " + p.nameAr + " (" + p.nameEn + ")"
+                    + " — " + (scanIndex + 1) + " من " + total
+                    + "\nالجولة " + (scanPass + 1)
+                    + (autoRunning ? " · البحث مستمر تلقائيًا" : " · البحث متوقف");
+            scanInfo.setText(text);
+        }
+    }
+
+    private void toggleAuto() {
+        if (autoRunning) {
+            stopAuto();
+        } else {
+            startAuto();
+        }
+        updateScanLabels();
+    }
+
+    private void startAuto() {
+        stopAuto();
+        if (!blaster.hasEmitter() && !irWarned) {
+            irWarned = true;
+            hintNoIr();
+        }
+        autoRunning = true;
+        handler.post(autoStep);
+    }
+
+    private void stopAuto() {
+        autoRunning = false;
+        handler.removeCallbacks(autoStep);
+        handler.removeCallbacks(autoNext);
+    }
+
+    /** Sends the code that is currently selected, then schedules the next one. */
+    private final Runnable autoStep = new Runnable() {
+        @Override
+        public void run() {
+            if (!autoRunning || found) return;
+            if (scanList.isEmpty() || scanIndex >= scanList.size()) {
+                rebuildForNextPass();
+                if (scanList.isEmpty()) return;
+            }
+            Protocol p = scanList.get(scanIndex);
+            int variant = scanVariants.get(scanIndex);
+            p.variant = variant;
+            Signal signal = p.variantCount() > 1 ? p.testSignal(variant) : p.testSignal();
+            attemptCount++;
+            boolean ok = blaster.transmit(signal);
+            if (!ok && !irWarned) {
+                irWarned = true;
+                hintNoIr();
+            }
+            updateScanLabels();
+            handler.postDelayed(autoNext, AUTO_GAP_MS);
+        }
+    };
+
+    /** Moves on to the following code of the sweep. */
+    private final Runnable autoNext = new Runnable() {
+        @Override
+        public void run() {
+            if (!autoRunning || found) return;
+            if (scanIndex + 1 < scanList.size()) {
+                scanIndex++;
+            } else if (smartScan) {
+                rebuildForNextPass();
+            } else {
+                scanIndex = 0;
+            }
+            handler.post(autoStep);
+        }
+    };
+
+    /**
+     * When every code of the current pass has been tried, start the next pass
+     * (alternate protocol variants), then keep cycling until the user stops it.
+     */
+    private void rebuildForNextPass() {
+        scanPass++;
+        List<Protocol> list = new ArrayList<>();
+        List<Integer> variants = new ArrayList<>();
+        if (smartScan) {
+            for (Protocol p : Protocols.scanOrder()) {
+                if (p.variantCount() > scanPass % Math.max(1, maxVariants())) {
+                    list.add(p);
+                    variants.add(scanPass % maxVariants());
+                }
+            }
+            if (list.isEmpty()) {
+                for (Protocol p : Protocols.scanOrder()) {
+                    list.add(p);
+                    variants.add(0);
+                }
+            }
+        } else if (brandProtocol != null) {
+            int v = scanPass % Math.max(1, brandProtocol.variantCount());
+            list.add(brandProtocol);
+            variants.add(v);
+        }
+        scanList.clear();
+        scanVariants.clear();
+        scanList.addAll(list);
+        scanVariants.addAll(variants);
+        scanIndex = 0;
+    }
+
+    private int maxVariants() {
+        int max = 1;
+        for (Protocol p : Protocols.all()) max = Math.max(max, p.variantCount());
+        return max;
+    }
+
+    private boolean irWarned = false;
 
     private void sendTest() {
         if (scanList.isEmpty()) return;
         Protocol p = scanList.get(scanIndex);
         int variant = scanVariants.get(scanIndex);
+        p.variant = variant;
         Signal s = p.variantCount() > 1 ? p.testSignal(variant) : p.testSignal();
         boolean ok = blaster.transmit(s);
-        if (!ok) {
+        if (!ok && !irWarned) {
+            irWarned = true;
             hintNoIr();
         }
+        attemptCount++;
+        updateScanLabels();
     }
 
     private void hintNoIr() {
@@ -381,6 +546,7 @@ public class SetupActivity extends Activity {
     }
 
     private void onNext() {
+        if (scanList.isEmpty()) return;
         if (scanIndex + 1 >= scanList.size()) {
             new AlertDialog.Builder(this)
                     .setTitle("لم يتم العثور على كود مطابق")
@@ -390,13 +556,25 @@ public class SetupActivity extends Activity {
                     .show();
             return;
         }
-        scanIndex++;
-        showStep(STEP_TEST);
-        sendTest();
+        if (scanIndex + 1 < scanList.size()) scanIndex++;
+        else rebuildForNextPass();
+        if (autoRunning) {
+            handler.removeCallbacks(autoStep);
+            handler.removeCallbacks(autoNext);
+            handler.postDelayed(autoStep, 320);
+        } else {
+            sendTest();
+        }
+        updateScanLabels();
     }
 
     private void onSuccess() {
-        final Protocol p = scanList.get(scanIndex);
+        found = true;
+        stopAuto();
+        final Protocol p = currentProtocol();
+        final int variant = scanVariants.isEmpty() ? 0
+                : scanVariants.get(Math.min(scanIndex, scanVariants.size() - 1));
+        p.variant = variant;
         // Re-send so the unit is in a known state.
         blaster.transmit(p.encode(p.defaultState()));
         final EditText input = new EditText(this);
@@ -425,7 +603,7 @@ public class SetupActivity extends Activity {
             positive.setOnClickListener(v -> {
                 String name = input.getText().toString().trim();
                 if (name.isEmpty()) name = "مكيف " + p.nameAr;
-                save(p, name);
+                save(p, name, variant);
                 dialog.dismiss();
             });
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Ui.MUTED);
@@ -436,8 +614,9 @@ public class SetupActivity extends Activity {
         if (w != null) w.setBackgroundDrawable(new ColorDrawable(0xFF101B2E));
     }
 
-    private void save(Protocol p, String name) {
+    private void save(Protocol p, String name, int variant) {
         Profile profile = new Profile(UUID.randomUUID().toString(), name, p.id);
+        profile.variant = variant;
         profile.mode = AcState.MODE_COOL;
         profile.temp = 24;
         profile.fan = AcState.FAN_AUTO;
@@ -491,8 +670,21 @@ public class SetupActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        stopAuto();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        stopAuto();
+    }
+
+    @Override
     public void onBackPressed() {
         if (step == STEP_TEST) {
+            stopAuto();
             showStep(STEP_BRAND);
             return;
         }

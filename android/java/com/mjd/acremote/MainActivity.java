@@ -93,6 +93,7 @@ public class MainActivity extends Activity {
         }
         profile = active;
         protocol = Protocols.byId(profile.protocolId);
+        protocol.variant = profile.variant;
         refreshAll();
         updateTimerLabel();
         tickTimer();
@@ -460,6 +461,7 @@ public class MainActivity extends Activity {
     }
 
     private void send() {
+        protocol.variant = profile.variant;
         final Signal signal = protocol.encode(profile.toState());
         store.upsert(profile);
         haptic(10);
