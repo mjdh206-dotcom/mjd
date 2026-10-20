@@ -5,15 +5,15 @@ plugins {
 }
 
 android {
-    namespace = "com.aldar.store"
+    namespace = "com.alharamain.customer"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.aldar.store"
+        applicationId = "com.alharamain.customer"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0.0-demo"
+        versionName = "1.0.0-customer"
         resourceConfigurations += listOf("ar", "en")
         vectorDrawables.useSupportLibrary = true
     }

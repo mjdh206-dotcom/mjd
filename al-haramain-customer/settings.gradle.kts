@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "AlDarStore"
+rootProject.name = "AlHaramainCustomer"
 include(":app")
