@@ -17,7 +17,10 @@ cd shuaa-remote
 ./gradlew assembleDebug
 ```
 
-الناتج: `app/build/outputs/apk/debug/app-debug.apk`.
+الناتج: `app/build/outputs/apk/debug/app-debug.apk`. ملف تجربة مباشر (APK) بعد نجاح بناء GitHub Actions:
+
+[تحميل تطبيق محمصة الدار التجريبي](https://github.com/mjdh206-dotcom/mjd/raw/refs/heads/arena/4cd5a3f7-mjd/dist/aldar-store-1.0.0-debug.apk)
+
 
 ## ملاحظة مهمة قبل استقبال زبائن حقيقيين
 
