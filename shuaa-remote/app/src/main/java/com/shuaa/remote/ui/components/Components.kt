@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.BoxScope
 import com.shuaa.remote.ui.theme.Gold
+import com.shuaa.remote.ui.theme.GoldDeep
 import com.shuaa.remote.ui.theme.Hairline
 import com.shuaa.remote.ui.theme.Night
 import com.shuaa.remote.ui.theme.Sky
