@@ -1,0 +1,2 @@
+-keep class com.shuaa.remote.** { *; }
+-keepattributes *Annotation*
