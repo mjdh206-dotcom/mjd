@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ShuaaRemote"
+rootProject.name = "AlDarStore"
 include(":app")

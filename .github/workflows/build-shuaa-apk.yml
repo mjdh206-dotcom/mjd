@@ -1,4 +1,4 @@
-name: Build شُعاع APK
+name: Build محمصة الدار APK
 
 on:
   push:
@@ -59,7 +59,7 @@ jobs:
         if: steps.gradle_build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: shuaa-remote-apk
+          name: al-dar-store-apk
           path: shuaa-remote/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 90
@@ -70,9 +70,9 @@ jobs:
           git config user.name "shuaa-build-bot"
           git config user.email "shuaa-build-bot@users.noreply.github.com"
           mkdir -p dist
-          cp shuaa-remote/app/build/outputs/apk/debug/app-debug.apk dist/shuaa-remote-1.0.0-debug.apk
-          git add -f dist/shuaa-remote-1.0.0-debug.apk
-          git commit -m "build: APK شُعاع 1.0.0 [skip ci]" || echo "لا تغييرات"
+          cp shuaa-remote/app/build/outputs/apk/debug/app-debug.apk dist/aldar-store-1.0.0-debug.apk
+          git add -f dist/aldar-store-1.0.0-debug.apk
+          git commit -m "build: APK محمصة الدار 1.0.0 [skip ci]" || echo "لا تغييرات"
           git push origin HEAD:${{ github.ref_name }}
 
       - name: إيقاف عند الفشل

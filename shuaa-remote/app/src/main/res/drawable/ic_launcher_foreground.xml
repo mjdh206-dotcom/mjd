@@ -1,29 +1,6 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-
-    <!-- شاشة التلفزيون -->
-    <path
-        android:pathData="M32,40 h44 a5,5 0 0 1 5,5 v20 a5,5 0 0 1 -5,5 h-44 a5,5 0 0 1 -5,-5 v-20 a5,5 0 0 1 5,-5 z"
-        android:strokeColor="#F3C778"
-        android:strokeWidth="3.4"
-        android:strokeLineJoin="round"
-        android:fillColor="#00000000" />
-
-    <!-- نقطة الإرسال -->
-    <path
-        android:pathData="M54,55 m-3.4,0 a3.4,3.4 0 1 0 6.8,0 a3.4,3.4 0 1 0 -6.8,0"
-        android:fillColor="#F3C778" />
-
-    <!-- أمواج الأشعة -->
-    <path android:pathData="M61,50 a8,8 0 0 1 0,10"
-        android:strokeColor="#7FD1FF" android:strokeWidth="2.4" android:strokeLineCap="round" android:fillColor="#00000000" />
-    <path android:pathData="M65.5,46.5 a14,14 0 0 1 0,17"
-        android:strokeColor="#7FD1FF" android:strokeWidth="2.4" android:strokeLineCap="round" android:fillColor="#00000000" />
-
-    <!-- ساق الشاشة -->
-    <path android:pathData="M46,70 l-3,6 M62,70 l3,6 M39,76 h30"
-        android:strokeColor="#F3C778" android:strokeWidth="3" android:strokeLineCap="round" android:fillColor="#00000000" />
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M53.5,19 C38,19 26,35 27,53 C28,72 41,84 54,84 C68,84 81,70 81,52 C81,34 68,19 53.5,19 Z" android:fillColor="#D77A35" />
+    <path android:pathData="M53,26 C42,34 38,44 39,55 C40,66 46,74 54,78" android:strokeColor="#FFE3B9" android:strokeWidth="3" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M27,78 C41,72 67,72 81,78 L77,88 C61,94 43,94 31,88 Z" android:fillColor="#F2D6A8" />
+    <path android:pathData="M35,80 C44,77 65,77 74,80" android:strokeColor="#B77638" android:strokeWidth="2" android:strokeLineCap="round" android:fillColor="#00000000" />
 </vector>

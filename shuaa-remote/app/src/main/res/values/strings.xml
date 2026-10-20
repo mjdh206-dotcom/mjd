@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">شُعاع</string>
-    <string name="tile_label">ريموت شُعاع</string>
-    <string name="tile_subtitle">فتح الريموت</string>
+    <string name="app_name">محمصة الدار</string>
 </resources>
