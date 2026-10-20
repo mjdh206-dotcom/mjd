@@ -1,0 +1,15 @@
+{
+  "name": "haramain-functions",
+  "private": true,
+  "main": "lib/index.js",
+  "engines": { "node": "20" },
+  "scripts": { "build": "tsc", "serve": "npm run build && firebase emulators:start --only functions,firestore", "deploy": "firebase deploy --only functions" },
+  "dependencies": {
+    "firebase-admin": "^13.0.1",
+    "firebase-functions": "^6.1.1"
+  },
+  "overrides": { "uuid": "^11.1.1" },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

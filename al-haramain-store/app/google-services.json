@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "430311556474",
+    "project_id": "al-haramain-roasters",
+    "storage_bucket": "al-haramain-roasters.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:430311556474:android:5b592539c94075dba042c3",
+        "android_client_info": {
+          "package_name": "com.alharamain.customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC92TeBrtEwGTOGOepFWYVebli9NPIm-gI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:430311556474:android:251d30cd3a524b8ba042c3",
+        "android_client_info": {
+          "package_name": "com.alharamain.store"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC92TeBrtEwGTOGOepFWYVebli9NPIm-gI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

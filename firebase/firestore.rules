@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isStoreAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/config/access)
+        && get(/databases/$(database)/documents/config/access).data.adminUid == request.auth.uid;
+    }
+
+    match /config/access {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update, delete: if isStoreAdmin();
+    }
+    match /offers/{offerId} {
+      allow read: if true;
+      allow create, update, delete: if isStoreAdmin();
+    }
+    match /orders/{orderId} {
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'جديد'
+        && request.resource.data.customer is string
+        && request.resource.data.customer.size() > 0
+        && request.resource.data.customer.size() <= 100
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() > 0
+        && request.resource.data.phone.size() <= 40
+        && request.resource.data.address is string
+        && request.resource.data.address.size() > 0
+        && request.resource.data.address.size() <= 300
+        && request.resource.data.lines is list
+        && request.resource.data.lines.size() > 0
+        && request.resource.data.lines.size() <= 40
+        && request.resource.data.total is number
+        && request.resource.data.total >= 0;
+      allow read: if isStoreAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow update: if isStoreAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      allow delete: if isStoreAdmin();
+    }
+  }
+}

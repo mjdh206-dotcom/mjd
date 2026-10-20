@@ -34,6 +34,7 @@ import org.json.JSONObject
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.UUID
+import com.google.firebase.firestore.ListenerRegistration
 
 private val Pine = Color(0xFF173D31)
 private val PineLight = Color(0xFF275745)
@@ -92,8 +93,25 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun ShopApp(prefs: android.content.SharedPreferences) {
-    val products = remember { seedProducts() }
-    var orders by remember { mutableStateOf(loadOrders(prefs)) }
+    var products by remember { mutableStateOf(seedProducts()) }
+    var orders by remember { mutableStateOf(emptyList<ShopOrder>()) }
+    var offer by remember { mutableStateOf<Map<String, Any>?>(null) }
+    var userId by remember { mutableStateOf<String?>(null) }
+    var cloudReady by remember { mutableStateOf(false) }
+    DisposableEffect(Unit) {
+        val productListener = CloudSync.watchProducts { rows -> products = rows.mapNotNull(::productFromCloud).ifEmpty { seedProducts() } }
+        val offerListener = CloudSync.watchOffer { offer = it }
+        var orderListener: ListenerRegistration? = null
+        var disposed = false
+        CloudSync.ensureSignedIn { uid ->
+            if (!disposed) {
+                userId = uid
+                cloudReady = uid != null
+                if (uid != null) orderListener = CloudSync.watchOrders(uid) { rows -> orders = rows.mapNotNull(::orderFromCloud) }
+            }
+        }
+        onDispose { disposed = true; productListener.remove(); offerListener.remove(); orderListener?.remove() }
+    }
     var cart by remember { mutableStateOf(mapOf<String, Int>()) }
     var page by remember { mutableStateOf("الرئيسية") }
     var category by remember { mutableStateOf("الكل") }
@@ -124,7 +142,7 @@ private fun ShopApp(prefs: android.content.SharedPreferences) {
                 "حسابي" -> ProfileScreen(orderCount = orders.size)
                 else -> HomeScreen(
                     products = visibleProducts, categories = cats, category = category, query = query,
-                    cartCount = cartCount, cartTotal = cartTotal,
+                    cartCount = cartCount, cartTotal = cartTotal, offer = offer,
                     onCategory = { category = it }, onQuery = { query = it },
                     onAdd = { p -> cart = cart + (p.id to ((cart[p.id] ?: 0) + 1)); toast = "أُضيف ${p.name} إلى السلة" },
                     onCart = { checkout = true }
@@ -142,15 +160,22 @@ private fun ShopApp(prefs: android.content.SharedPreferences) {
     if (checkout) CheckoutDialog(
         products = products, cart = cart, onDismiss = { checkout = false },
         onSubmit = { name, phone, address, lines, total ->
-            val order = ShopOrder(UUID.randomUUID().toString().take(8).uppercase(), name, phone, address, lines, total, "جديد", "اليوم")
-            orders = listOf(order) + orders; saveOrders(); cart = emptyMap(); checkout = false; page = "طلباتي"; toast = "حُفظ الطلب التجريبي على هذا الجهاز"
+            val uid = userId
+            if (uid == null || !cloudReady) { toast = "تعذّر الاتصال بالخادم؛ تحقّق من الإنترنت ثم أعد المحاولة" }
+            else {
+                val orderData = mapOf("customer" to name, "phone" to phone, "address" to address, "lines" to lines.map { mapOf("productId" to it.productId, "name" to it.name, "qty" to it.qty, "price" to it.price) }, "total" to total)
+                CloudSync.submitOrder(uid, orderData) { ok ->
+                    if (ok) { cart = emptyMap(); checkout = false; page = "طلباتي"; toast = "وصل طلبك إلى محامص الحرمين" }
+                    else toast = "لم يُرسل الطلب؛ تحقّق من الاتصال وحاول مجدداً"
+                }
+            }
         }, onQty = { id, delta -> val next = (cart[id] ?: 0) + delta; cart = if (next <= 0) cart - id else cart + (id to next) }
     )
 
 }
 
 @Composable
-private fun HomeScreen(products: List<Product>, categories: List<String>, category: String, query: String, cartCount: Int, cartTotal: Double, onCategory: (String) -> Unit, onQuery: (String) -> Unit, onAdd: (Product) -> Unit, onCart: () -> Unit) {
+private fun HomeScreen(products: List<Product>, categories: List<String>, category: String, query: String, cartCount: Int, cartTotal: Double, offer: Map<String, Any>?, onCategory: (String) -> Unit, onQuery: (String) -> Unit, onAdd: (Product) -> Unit, onCart: () -> Unit) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 20.dp)) {
         item { Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Column { Text("محامص الحرمين", fontSize = 23.sp, color = Pine, fontWeight = FontWeight.ExtraBold); Text("نكهة أصيلة... وضيافة من القلب", fontSize = 12.sp, color = Muted) }
@@ -158,10 +183,10 @@ private fun HomeScreen(products: List<Product>, categories: List<String>, catego
         } }
         item { Box(Modifier.fillMaxWidth().padding(horizontal = 18.dp).height(182.dp).clip(RoundedCornerShape(26.dp)).background(Brush.linearGradient(listOf(Pine, Color(0xFF31644A))))) {
             Column(Modifier.align(Alignment.CenterStart).padding(start = 23.dp, end = 20.dp)) {
-                Surface(color = Orange, shape = RoundedCornerShape(20.dp)) { Text("عرض الأسبوع", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp)) }
-                Spacer(Modifier.height(12.dp)); Text("ضيافتك علينا أطيب", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-                Text("خلطة الحرمين الفاخرة بانتظارك", color = Color(0xFFE7E8D9), fontSize = 13.sp, modifier = Modifier.padding(top = 5.dp))
-                Text("خصومات على أصناف مختارة", color = Color(0xFFFFD5A8), fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp))
+                Surface(color = Orange, shape = RoundedCornerShape(20.dp)) { Text(offer?.get("badge")?.toString()?.takeIf { it.isNotBlank() } ?: "عرض الأسبوع", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp)) }
+                Spacer(Modifier.height(12.dp)); Text(offer?.get("title")?.toString()?.takeIf { it.isNotBlank() } ?: "ضيافتك علينا أطيب", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                Text(offer?.get("description")?.toString()?.takeIf { it.isNotBlank() } ?: "خلطة الحرمين الفاخرة بانتظارك", color = Color(0xFFE7E8D9), fontSize = 13.sp, modifier = Modifier.padding(top = 5.dp))
+                Text(offer?.get("footer")?.toString()?.takeIf { it.isNotBlank() } ?: "خصومات على أصناف مختارة", color = Color(0xFFFFD5A8), fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp))
             }
             Text("🥜", Modifier.align(Alignment.CenterEnd).padding(end = 22.dp), fontSize = 64.sp)
         } }
@@ -207,9 +232,7 @@ private fun OrdersScreen(orders: List<ShopOrder>) {
     Column(Modifier.fillMaxSize().padding(horizontal = 18.dp)) {
         Text("طلباتي", Modifier.padding(top = 22.dp), fontSize = 25.sp, fontWeight = FontWeight.ExtraBold, color = Pine)
         Text("تابع طلباتك أولاً بأول", color = Muted, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
-        Surface(Modifier.fillMaxWidth().padding(bottom = 14.dp), color = PaleOrange, shape = RoundedCornerShape(14.dp)) {
-            Text("تنبيه: هذه نسخة زبون تجريبية؛ الطلبات لا تصل للمحل حتى نربطها بتطبيق الإدارة.", Modifier.padding(12.dp), color = Ink, fontSize = 11.sp)
-        }
+
         if (orders.isEmpty()) EmptyState("🧺", "لسّه ما طلبت شي", "اكتشف ألذ المكسرات والقهوة من متجرنا")
         else LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) { items(orders) { order ->
             Surface(color = Paper, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
@@ -248,7 +271,7 @@ private fun ProfileScreen(orderCount: Int) {
             }
         }
         Surface(Modifier.fillMaxWidth().padding(top = 14.dp), color = PaleOrange, shape = RoundedCornerShape(16.dp)) {
-            Text("نسخة الزبون التجريبية — ربط الطلبات الفوري وتنبيه المحل سيُضافان مع تطبيق الإدارة والخادم المشترك.", Modifier.padding(15.dp), color = Ink, fontSize = 11.sp)
+            Text("الطلبات والعروض تتزامن عبر Firebase عند تفعيل إعدادات المشروع وقواعده.", Modifier.padding(15.dp), color = Ink, fontSize = 11.sp)
         }
     }
 }
@@ -268,13 +291,25 @@ private fun CheckoutDialog(products: List<Product>, cart: Map<String, Int>, onDi
             Text("رقم الهاتف", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 5.dp)); OutlinedTextField(phone, { phone = it }, placeholder = { Text("للتواصل وتأكيد التوصيل", fontSize = 12.sp) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), singleLine = true, shape = RoundedCornerShape(13.dp), modifier = Modifier.fillMaxWidth())
             Text("عنوان التوصيل", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 5.dp)); OutlinedTextField(address, { address = it }, placeholder = { Text("الشارع، الحي، أو أقرب علامة", fontSize = 12.sp) }, singleLine = true, shape = RoundedCornerShape(13.dp), modifier = Modifier.fillMaxWidth())
             Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) { Text("الإجمالي", fontWeight = FontWeight.Bold, color = Ink); Text(money(total), fontWeight = FontWeight.ExtraBold, color = Pine) }
-            Text("نسخة تجريبية: هذا الطلب سيُحفظ على الهاتف ولن يصل للمحل قبل ربط تطبيق الإدارة.", color = Orange, fontSize = 10.sp, modifier = Modifier.padding(top = 8.dp))
+            Text("يرسل الطلب مباشرة إلى المتجر عند توفر اتصال الإنترنت.", color = Orange, fontSize = 10.sp, modifier = Modifier.padding(top = 8.dp))
         }
-    }, confirmButton = { Button(onClick = { onSubmit(name.trim(), phone.trim(), address.trim(), lines, total) }, enabled = name.isNotBlank() && phone.isNotBlank() && address.isNotBlank() && lines.isNotEmpty(), colors = ButtonDefaults.buttonColors(containerColor = Pine), shape = RoundedCornerShape(13.dp)) { Text("حفظ الطلب التجريبي") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("متابعة التسوق", color = Muted) } })
+    }, confirmButton = { Button(onClick = { onSubmit(name.trim(), phone.trim(), address.trim(), lines, total) }, enabled = name.isNotBlank() && phone.isNotBlank() && address.isNotBlank() && lines.isNotEmpty(), colors = ButtonDefaults.buttonColors(containerColor = Pine), shape = RoundedCornerShape(13.dp)) { Text("إرسال الطلب") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("متابعة التسوق", color = Muted) } })
 }
 
 @Composable
 private fun EmptyState(emoji: String, title: String, message: String) { Column(Modifier.fillMaxWidth().padding(top = 44.dp, bottom = 36.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text(emoji, fontSize = 42.sp); Text(title, color = Pine, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp)); Text(message, color = Muted, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp, start = 24.dp, end = 24.dp)) } }
+
+private fun productFromCloud(data: Map<String, Any>): Product? = runCatching {
+    Product(data["id"].toString(), data["name"].toString(), data["category"].toString(), (data["price"] as Number).toDouble(), data["unit"]?.toString() ?: "١٠٠ غرام", data["emoji"]?.toString() ?: "🥜", data["description"]?.toString() ?: "طازج ومنتقى بعناية", data["featured"] as? Boolean ?: false, data["available"] as? Boolean ?: true, (data["discount"] as? Number)?.toInt() ?: 0)
+}.getOrNull()
+
+private fun orderFromCloud(data: Map<String, Any>): ShopOrder? = runCatching {
+    val lines = (data["lines"] as List<*>).map { raw ->
+        val item = raw as Map<*, *>
+        OrderLine(item["productId"].toString(), item["name"].toString(), (item["qty"] as Number).toInt(), (item["price"] as Number).toDouble())
+    }
+    ShopOrder(data["id"].toString().takeLast(8).uppercase(), data["customer"].toString(), data["phone"].toString(), data["address"].toString(), lines, (data["total"] as Number).toDouble(), data["status"]?.toString() ?: "جديد", "وصل حديثاً")
+}.getOrNull()
 
 private fun money(amount: Double): String = NumberFormat.getNumberInstance(Locale("ar")).apply { minimumFractionDigits = 0; maximumFractionDigits = 0 }.format(amount) + " ل.س"
 
