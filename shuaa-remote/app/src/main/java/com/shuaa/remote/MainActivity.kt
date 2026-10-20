@@ -327,7 +327,14 @@ private fun CheckoutDialog(products: List<Product>, cart: Map<String, Int>, onDi
 
 @Composable
 private fun ProductDialog(product: Product?, onDismiss: () -> Unit, onSave: (Product) -> Unit) {
-    var name by remember(product) { mutableStateOf(product?.name ?: "") }; var category by remember(product) { mutableStateOf(product?.category ?: "مكسرات") }; var price by remember(product) { mutableStateOf(product?.price?.toString() ?: "") }; var unit by remember(product) { mutableStateOf(product?.unit ?: "١٠٠ غرام") }; var description by remember(product) { mutableStateOf(product?.description ?: "") }; var emoji by remember(product) { mutableStateOf(product?.emoji ?: "🥜") }; var featured by remember(product) { mutableStateOf(product?.featured ?: false) }; var discount by remember(product) { mutableStateOf(product?.discountPercent?.toString() ?: "0") }
+    var name by remember(product) { mutableStateOf(product?.name ?: "") }
+    var category by remember(product) { mutableStateOf(product?.category ?: "مكسرات") }
+    var price by remember(product) { mutableStateOf(product?.price?.toString() ?: "") }
+    var unit by remember(product) { mutableStateOf(product?.unit ?: "١٠٠ غرام") }
+    var description by remember(product) { mutableStateOf(product?.description ?: "") }
+    var emoji by remember(product) { mutableStateOf(product?.emoji ?: "🥜") }
+    var featured by remember(product) { mutableStateOf(product?.featured ?: false) }
+    var discount by remember(product) { mutableStateOf(product?.discountPercent?.toString() ?: "0") }
     var imageUri by remember(product) { mutableStateOf(product?.imageUri ?: "") }
     val context = LocalContext.current
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -336,24 +343,56 @@ private fun ProductDialog(product: Product?, onDismiss: () -> Unit, onSave: (Pro
             imageUri = uri.toString()
         }
     }
-    AlertDialog(onDismissRequest = onDismiss, containerColor = Cream, shape = RoundedCornerShape(24.dp), title = { Text(if (product == null) "إضافة منتج جديد" else "تعديل المنتج", color = Pine, fontWeight = FontWeight.Bold) }, text = {
-        Column(Modifier.heightIn(max = 550.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Surface(onClick = { imagePicker.launch(arrayOf("image/*")) }, color = Paper, shape = RoundedCornerShape(14.dp)) {
-                Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFF2EEE5))) { ProductPhoto(imageUri, emoji, Modifier.fillMaxSize()) }
-                    Text(if (imageUri.isBlank()) "إضافة صورة للمنتج" else "تغيير صورة المنتج", Modifier.padding(start = 12.dp), color = Pine, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.weight(1f)); Text("＋", color = Orange, fontSize = 23.sp)
+    val parsedPrice = price.replace(',', '.').toDoubleOrNull()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Cream,
+        shape = RoundedCornerShape(24.dp),
+        title = { Text(if (product == null) "إضافة منتج جديد" else "تعديل المنتج", color = Pine, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(Modifier.heightIn(max = 550.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Surface(onClick = { imagePicker.launch(arrayOf("image/*")) }, color = Paper, shape = RoundedCornerShape(14.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFF2EEE5))) {
+                            ProductPhoto(imageUri, emoji, Modifier.fillMaxSize())
+                        }
+                        Text(if (imageUri.isBlank()) "إضافة صورة للمنتج" else "تغيير صورة المنتج", Modifier.padding(start = 12.dp), color = Pine, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.weight(1f))
+                        Text("＋", color = Orange, fontSize = 23.sp)
+                    }
+                }
+                OutlinedTextField(name, { name = it }, label = { Text("اسم المنتج") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                OutlinedTextField(category, { category = it }, label = { Text("القسم · مكسرات / قهوة / كاندي...") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(price, { price = it }, label = { Text("السعر الأساسي") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
+                    OutlinedTextField(unit, { unit = it }, label = { Text("الوزن / الوحدة") }, singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
+                }
+                OutlinedTextField(discount, { discount = it }, label = { Text("نسبة الخصم % (صفر بدون عرض)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                OutlinedTextField(emoji, { emoji = it }, label = { Text("رمز بديل (إيموجي)") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                OutlinedTextField(description, { description = it }, label = { Text("وصف مختصر") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = featured, onCheckedChange = { featured = it })
+                    Text("إظهار كمنتج مميز", color = Ink, fontSize = 13.sp)
                 }
             }
-            OutlinedTextField(name, { name = it }, label = { Text("اسم المنتج") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-            OutlinedTextField(category, { category = it }, label = { Text("القسم · مكسرات / قهوة / كاندي...") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedTextField(price, { price = it }, label = { Text("السعر الأساسي") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)); OutlinedTextField(unit, { unit = it }, label = { Text("الوزن / الوحدة") }, singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) }
-            OutlinedTextField(discount, { discount = it }, label = { Text("نسبة الخصم % (صفر بدون عرض)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-            OutlinedTextField(emoji, { emoji = it }, label = { Text("رمز المنتج (إيموجي)") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-            OutlinedTextField(description, { description = it }, label = { Text("وصف مختصر") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = featured, onCheckedChange = { featured = it }); Text("إظهار كمنتج مميز", color = Ink, fontSize = 13.sp) }
-        }
-    }, confirmButton = { Button(onClick = { val validPrice = price.replace(',', '.').toDoubleOrNull()?.takeIf { it > 0 } ?: return@Button; val validDiscount = discount.toIntOrNull()?.coerceIn(0, 90) ?: 0; onSave(Product(product?.id ?: "", name.trim(), category.trim().ifBlank { "مكسرات" }, validPrice, unit.trim().ifBlank { "١٠٠ غرام" }, emoji.trim().ifBlank { "🥜" }, description.trim().ifBlank { "طازج ومنتقى بعناية" }, featured, true, imageUri, validDiscount)) }, enabled = name.isNotBlank() && price.isNotBlank(), colors = ButtonDefaults.buttonColors(containerColor = Pine), shape = RoundedCornerShape(13.dp)) { Text("حفظ") }, dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء", color = Muted) } })
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val finalPrice = parsedPrice
+                    if (finalPrice != null && finalPrice > 0) {
+                        val finalDiscount = discount.toIntOrNull()?.coerceIn(0, 90) ?: 0
+                        onSave(Product(product?.id ?: "", name.trim(), category.trim().ifBlank { "مكسرات" }, finalPrice, unit.trim().ifBlank { "١٠٠ غرام" }, emoji.trim().ifBlank { "🥜" }, description.trim().ifBlank { "طازج ومنتقى بعناية" }, featured, true, imageUri, finalDiscount))
+                    }
+                },
+                enabled = name.isNotBlank() && parsedPrice != null && parsedPrice > 0,
+                colors = ButtonDefaults.buttonColors(containerColor = Pine),
+                shape = RoundedCornerShape(13.dp)
+            ) { Text("حفظ") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء", color = Muted) } }
+    )
 }
 
 @Composable
