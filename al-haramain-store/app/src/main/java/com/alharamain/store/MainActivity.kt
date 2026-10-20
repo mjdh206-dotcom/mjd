@@ -257,7 +257,7 @@ private fun ProductEditorDialog(product: Product?, onDismiss: () -> Unit, onSave
             image = uri.toString()
         }
     }
-    val numericPrice = price.replace(',', '.').toDoubleOrNull()
+    val numericPrice = normalizeDigits(price).replace(',', '.').toDoubleOrNull()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -294,7 +294,7 @@ private fun ProductEditorDialog(product: Product?, onDismiss: () -> Unit, onSave
             Button(
                 onClick = {
                     numericPrice?.takeIf { it > 0 }?.let { amount ->
-                        val discountPercent = discount.toIntOrNull()?.coerceIn(0, 90) ?: 0
+                        val discountPercent = normalizeDigits(discount).toIntOrNull()?.coerceIn(0, 90) ?: 0
                         onSave(Product(product?.id ?: "", name.trim(), category.trim().ifBlank { "مكسرات" }, amount, unit.trim().ifBlank { "١٠٠ غرام" }, emoji, desc, featured, true, discountPercent, image))
                     }
                 },
@@ -345,6 +345,15 @@ private fun showTestNotification(context: Context) {
         .setContentText("هذا إشعار تجريبي لوصول طلب جديد")
         .setPriority(NotificationCompat.PRIORITY_HIGH).setAutoCancel(true).build()
     NotificationManagerCompat.from(context).notify(4001, notification)
+}
+private fun normalizeDigits(value: String): String = buildString {
+    value.forEach { ch ->
+        when (ch) {
+            in '٠'..'٩' -> append(('0'.code + (ch - '٠')).toChar())
+            in '۰'..'۹' -> append(('0'.code + (ch - '۰')).toChar())
+            else -> append(ch)
+        }
+    }
 }
 private fun money(value: Double): String = NumberFormat.getNumberInstance(Locale("ar")).apply { minimumFractionDigits = 0; maximumFractionDigits = 0 }.format(value) + " ل.س"
 
