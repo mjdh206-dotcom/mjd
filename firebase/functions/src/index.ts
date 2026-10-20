@@ -23,10 +23,10 @@ export const notifyStoreOfNewOrder = onDocumentCreated(
         const line = candidate as Record<string, unknown>;
         const productId = typeof line.productId === "string" ? line.productId : "";
         const qty = typeof line.qty === "number" ? line.qty : 0;
-        if (!productId || !Number.isInteger(qty) || qty < 1 || qty > 99) { valid = false; break; }
+        if (!/^[A-Za-z0-9_-]{1,80}$/.test(productId) || !Number.isInteger(qty) || qty < 1 || qty > 99) { valid = false; break; }
         const productSnap = await db.collection("products").doc(productId).get();
         const product = productSnap.data();
-        if (!productSnap.exists || !product || product.available !== true || typeof product.price !== "number") { valid = false; break; }
+        if (!productSnap.exists || !product || product.available !== true || typeof product.price !== "number" || !Number.isFinite(product.price) || product.price < 0) { valid = false; break; }
         const discount = typeof product.discount === "number" ? Math.min(90, Math.max(0, product.discount)) : 0;
         const unitPrice = Math.round(product.price * (100 - discount)) / 100;
         const name = typeof product.name === "string" ? product.name.slice(0, 100) : "منتج";

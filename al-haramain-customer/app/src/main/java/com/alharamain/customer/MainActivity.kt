@@ -144,7 +144,7 @@ private fun ShopApp(prefs: android.content.SharedPreferences) {
                     products = visibleProducts, categories = cats, category = category, query = query,
                     cartCount = cartCount, cartTotal = cartTotal, offer = offer,
                     onCategory = { category = it }, onQuery = { query = it },
-                    onAdd = { p -> cart = cart + (p.id to ((cart[p.id] ?: 0) + 1)); toast = "أُضيف ${p.name} إلى السلة" },
+                    onAdd = { p -> cart = cart + (p.id to ((cart[p.id] ?: 0) + 1).coerceAtMost(99)); toast = "أُضيف ${p.name} إلى السلة" },
                     onCart = { checkout = true }
                 )
             }
