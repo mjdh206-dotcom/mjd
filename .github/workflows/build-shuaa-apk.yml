@@ -8,8 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  issues: write
+  contents: write
 
 jobs:
   build:
@@ -39,26 +38,17 @@ jobs:
           set -o pipefail
           ./gradlew --no-daemon --stacktrace assembleDebug 2>&1 | tee build.log
 
-      - name: نشر ملخّص الأخطاء
-        if: steps.gradle_build.outcome == 'failure'
+      - name: حفظ سجل البناء عند الفشل
+        if: steps.gradle_build.outcome != 'success'
         run: |
-          {
-            echo "### فشل بناء شُعاع"
-            echo '```text'
-            grep -nE "e: |error:|FAILURE|What went wrong|Caused by|Unresolved|> Task .*FAILED" shuaa-remote/build.log | head -120
-            echo '```'
-            echo ""
-            echo "<details><summary>آخر 120 سطراً</summary>"
-            echo ""
-            echo '```text'
-            tail -n 120 shuaa-remote/build.log
-            echo '```'
-            echo "</details>"
-          } > /tmp/report.md
-          gh issue create \
-            --title "build-log-${{ github.run_number }}" \
-            --body-file /tmp/report.md \
-            --repo "${{ github.repository }}"
+          git config user.name "shuaa-build-bot"
+          git config user.email "shuaa-build-bot@users.noreply.github.com"
+          mkdir -p ci-logs
+          cp shuaa-remote/build.log ci-logs/last-build.log
+          grep -nE "e: file|e: |error:|FAILURE|What went wrong|Caused by|Unresolved|FAILED" shuaa-remote/build.log > ci-logs/errors.txt || true
+          git add -f ci-logs
+          git commit -m "ci: سجل بناء فاشل [skip ci]" || echo "لا تغييرات"
+          git push origin HEAD:${{ github.ref_name }}
 
       - name: رفع ملف APK
         if: steps.gradle_build.outcome == 'success'
@@ -70,5 +60,5 @@ jobs:
           retention-days: 90
 
       - name: إيقاف عند الفشل
-        if: steps.gradle_build.outcome == 'failure'
+        if: steps.gradle_build.outcome != 'success'
         run: exit 1
