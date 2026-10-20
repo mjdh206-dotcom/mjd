@@ -25,9 +25,9 @@ public class SharpProtocol extends Protocol {
         int mode;
         switch (s.mode) {
             case AcState.MODE_AUTO: mode = 0; break;
+            case AcState.MODE_HEAT: mode = 1; break;
             case AcState.MODE_COOL: mode = 2; break;
             case AcState.MODE_DRY: mode = 3; break;
-            case AcState.MODE_HEAT: mode = 1; break;
             default: mode = 2; break;
         }
         int fan;
@@ -35,11 +35,9 @@ public class SharpProtocol extends Protocol {
             case AcState.FAN_LOW: fan = 4; break;
             case AcState.FAN_MED: fan = 3; break;
             case AcState.FAN_HIGH: fan = 5; break;
-            default: fan = 7; break;
+            default: fan = 2; break;
         }
         int temp = clamp(s.temp, minTemp, maxTemp);
-        boolean powerChanged = s.power != lastPower;
-        lastPower = s.power;
 
         if (mode == 0 || mode == 3) {
             b[4] = 0x00;                                   // auto/dry: fixed temp
@@ -47,10 +45,10 @@ public class SharpProtocol extends Protocol {
         } else {
             b[4] = 0xC0 | ((temp - 15) & 0x0F);
         }
-        b[5] = (s.power ? 0x30 : 0x20);                    // normal on / off
+        b[5] = s.power ? 0x11 : 0x21;                      // on-from-off / off
         b[6] = (mode & 0x03) | ((fan & 0x07) << 4);
-        b[8] = s.swingV ? 0x07 : 0x02;                     // swing toggle / off
-        b[10] = powerChanged ? 0x00 : 0x04;                // which button was pressed
+        b[8] = 0x08 | (s.swingV ? 0x07 : 0x02);            // swing toggle / fixed
+        b[10] = 0x00;                                      // "power" button marker
 
         int x = 0;
         for (int i = 0; i < 12; i++) x ^= b[i];
@@ -58,6 +56,7 @@ public class SharpProtocol extends Protocol {
         x ^= (x >> 4) & 0x0F;
         b[12] = ((x & 0x0F) << 4) | (b[12] & 0x0F);
 
+        debugRaw = b.clone();
         byte[] data = new byte[13];
         for (int i = 0; i < 13; i++) data[i] = (byte) b[i];
 

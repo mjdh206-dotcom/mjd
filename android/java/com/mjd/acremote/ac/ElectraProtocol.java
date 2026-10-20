@@ -47,6 +47,7 @@ public class ElectraProtocol extends Protocol {
         for (int i = 0; i < 12; i++) sum += b[i];
         b[12] = sum & 0xFF;
 
+        debugRaw = b.clone();
         byte[] data = new byte[13];
         for (int i = 0; i < 13; i++) data[i] = (byte) b[i];
 

@@ -35,19 +35,19 @@ public class CoolixProtocol extends Protocol {
                 case AcState.MODE_DRY: mode = 1; break;
                 case AcState.MODE_AUTO: mode = 2; break;
                 case AcState.MODE_HEAT: mode = 3; break;
-                case AcState.MODE_FAN: mode = 1; break; // fan = dry + special temp code
+                case AcState.MODE_FAN: mode = 1; break; // fan mode = dry + special temp code
                 default: mode = 0; break;
             }
             int fan;
-            switch (s.fan) {
-                case AcState.FAN_LOW: fan = 4; break;   // kCoolixFanMin
-                case AcState.FAN_MED: fan = 2; break;   // kCoolixFanMed
-                case AcState.FAN_HIGH: fan = 1; break;  // kCoolixFanMax
-                default: fan = (mode == 0 || mode == 2) ? 0 : 5;
-            }
-            if (mode == 0 || mode == 2) fan = 0;        // cool/heat use auto0 only in auto/dry
-            if (s.mode == AcState.MODE_COOL || s.mode == AcState.MODE_HEAT) {
-                if (s.fan == AcState.FAN_AUTO) fan = 5;
+            if (mode == 1 || mode == 2) {
+                fan = 0;                                // Auto0 is the only valid speed
+            } else {
+                switch (s.fan) {
+                    case AcState.FAN_LOW: fan = 4; break;   // 0b100
+                    case AcState.FAN_MED: fan = 2; break;   // 0b010
+                    case AcState.FAN_HIGH: fan = 1; break;  // 0b001
+                    default: fan = 5; break;                // auto
+                }
             }
             int tempCode;
             if (s.mode == AcState.MODE_FAN) {
@@ -56,8 +56,9 @@ public class CoolixProtocol extends Protocol {
                 int t = clamp(s.temp, minTemp, maxTemp);
                 tempCode = TEMP_MAP[t - 17];
             }
-            raw = 0xB00000 | (fan << 13) | (SENSOR_IGNORE << 8) | (tempCode << 4) | (mode << 2);
+            raw = 0xB20000 | (fan << 13) | (SENSOR_IGNORE << 8) | (tempCode << 4) | (mode << 2);
         }
+        debugRaw = new int[]{(raw >> 16) & 0xFF, (raw >> 8) & 0xFF, raw & 0xFF};
         return build(raw);
     }
 

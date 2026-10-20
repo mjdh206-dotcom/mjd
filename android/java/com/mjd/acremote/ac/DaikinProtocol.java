@@ -40,13 +40,14 @@ public class DaikinProtocol extends Protocol {
         }
         b[21] = (s.power ? 0x01 : 0x00) | 0x08 | ((mode & 0x07) << 4);
         b[22] = (temp * 2) & 0xFF;
-        b[24] = ((s.swingV ? 0x0F : 0x00) << 4) | (fan & 0x0F);
+        b[24] = ((fan & 0x0F) << 4) | (s.swingV ? 0x0F : 0x00);
         b[25] = (s.swingH ? 0x0F : 0x00);
 
         b[7] = sum(b, 0, 7);
         b[15] = sum(b, 8, 7);
         b[34] = sum(b, 16, 18);
 
+        debugRaw = b.clone();
         byte[] data = new byte[35];
         for (int i = 0; i < 35; i++) data[i] = (byte) b[i];
 

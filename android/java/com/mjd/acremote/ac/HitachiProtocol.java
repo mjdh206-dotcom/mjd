@@ -39,18 +39,20 @@ public class HitachiProtocol extends Protocol {
         }
         if (mode == 0b1110) fan = 0b0001;          // auto mode locks fan to auto
         if (mode == 0b0010) fan = 0b1000;          // dry locks fan to low
+        if ((mode == 0b1001 || mode == 0b0100) && fan == 0b0001) fan = 0b1000;
         int temp = clamp(s.temp, minTemp, maxTemp);
 
         b[3] |= 0b10 << 6;                          // model A
         b[5] = (fan & 0x0F) | ((mode & 0x0F) << 4);
-        b[6] = (reverse(temp - 7, 5) & 0x1F) << 2;
-        b[11] = (s.power ? 0x20 : 0x00)
-                | (powerToggle ? 0x10 : 0x00)
+        b[6] = (b[6] & 0x83) | ((reverse(temp - 7, 5) & 0x1F) << 2);
+        // bit0 = swing toggle flag, bit5 = power (power toggle left clear).
+        b[11] = 0x01
+                | (s.power ? 0x20 : 0x00)
                 | (s.swingV ? 0x40 : 0x00)
                 | (s.swingH ? 0x80 : 0x00);
-        powerToggle = !powerToggle;
         b[12] = checksum(b);
 
+        debugRaw = b.clone();
         byte[] data = new byte[13];
         for (int i = 0; i < 13; i++) data[i] = (byte) b[i];
 

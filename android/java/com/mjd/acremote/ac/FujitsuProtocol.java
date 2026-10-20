@@ -17,11 +17,18 @@ public class FujitsuProtocol extends Protocol {
 
     @Override
     public Signal encode(AcState s) {
-        int[] b = new int[16];
-        b[0] = 0x14;
-        b[1] = 0x63;
-        b[3] = 0x10;
-        b[4] = 0x10;
+        if (!s.power) {
+            // Fujitsu uses a special short 7 byte "off" message.
+            int[] off = {0x14, 0x63, 0x00, 0x10, 0x10, 0x02, 0xFD};
+            debugRaw = off.clone();
+            byte[] data = new byte[7];
+            for (int i = 0; i < 7; i++) data[i] = (byte) off[i];
+            PulseBuilder p = new PulseBuilder();
+            p.mark(HDR_MARK).space(HDR_SPACE);
+            p.bytesLSB(data, 0, 7, BIT_MARK, ONE_SPACE, ZERO_SPACE);
+            p.mark(BIT_MARK).space(GAP);
+            return p.build(38000);
+        }
         int mode;
         switch (s.mode) {
             case AcState.MODE_AUTO: mode = 0; break;
@@ -38,32 +45,35 @@ public class FujitsuProtocol extends Protocol {
             default: fan = 0; break;
         }
         int temp = clamp(s.temp, minTemp, maxTemp);
+        int swing = s.swingV && s.swingH ? 3 : (s.swingV ? 1 : (s.swingH ? 2 : 0));
 
-        boolean powerChanged = s.power != lastPower;
-        lastPower = s.power;
-
-        b[5] = s.power ? 0x01 : 0x02;                 // command: turn on / off
+        int[] b = new int[16];
+        b[0] = 0x14;
+        b[1] = 0x63;
+        b[3] = 0x10;
+        b[4] = 0x10;
+        b[5] = 0xFE;                                  // "stay on" command for ARRAH2E
         b[6] = 9;                                     // bytes remaining
         b[7] = 0x30;                                  // protocol version
-        b[8] = (s.power ? 0x01 : 0x00) | (((temp - 16) & 0x3F) << 2);
+        b[8] = ((temp - 16) * 16) & 0xFC;             // (temp - 16) * 4, shifted by 2
         b[9] = mode & 0x07;
-        int swing = s.swingV && s.swingH ? 3 : (s.swingV ? 1 : 0);
         b[10] = (fan & 0x07) | ((swing & 0x03) << 4);
-        b[14] = 0x20;                                 // constant for this model
+        b[14] = 0x20;
         int sum = 0;
         for (int i = 7; i <= 14; i++) sum += b[i];
         b[15] = (0 - sum) & 0xFF;
 
+        debugRaw = b.clone();
         byte[] data = new byte[16];
         for (int i = 0; i < 16; i++) data[i] = (byte) b[i];
 
         PulseBuilder p = new PulseBuilder();
-        p.mark(HDR_MARK).space(HDR_SPACE);
-        p.bytesLSB(data, 0, 16, BIT_MARK, ONE_SPACE, ZERO_SPACE);
-        p.mark(BIT_MARK).space(GAP);
-        if (powerChanged) p.mark(HDR_MARK).space(HDR_SPACE)
-                .bytesLSB(data, 0, 16, BIT_MARK, ONE_SPACE, ZERO_SPACE)
-                .mark(BIT_MARK).space(GAP);
+        // Two identical frames: the first one is often missed by the A/C.
+        for (int rep = 0; rep < 2; rep++) {
+            p.mark(HDR_MARK).space(HDR_SPACE);
+            p.bytesLSB(data, 0, 16, BIT_MARK, ONE_SPACE, ZERO_SPACE);
+            p.mark(BIT_MARK).space(GAP);
+        }
         return p.build(38000);
     }
 }

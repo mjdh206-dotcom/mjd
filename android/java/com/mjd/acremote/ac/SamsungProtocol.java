@@ -21,8 +21,6 @@ public class SamsungProtocol extends Protocol {
             0x01, 0xD2, 0x0F, 0x00, 0x00, 0x00, 0x00,
             0x01, 0x02, 0xFF, 0x71, 0x80, 0x11, 0xC0};
 
-    private boolean wasPower = true;
-
     private static final int[] RESET = {
             0x02, 0x92, 0x0F, 0x00, 0x00, 0x00, 0xF0,
             0x01, 0x02, 0xAE, 0x71, 0x00, 0x15, 0xF0};
@@ -34,11 +32,9 @@ public class SamsungProtocol extends Protocol {
     @Override
     public Signal encode(AcState s) {
         if (!s.power) {
-            wasPower = false;
+            debugRaw = EXT_OFF.clone();
             return frame(EXT_OFF, EXT_OFF.length, MESSAGE_GAP, false);
         }
-        boolean justTurnedOn = !wasPower;
-        wasPower = true;
         int[] b = RESET.clone();
         int temp = clamp(s.temp, minTemp, maxTemp);
         int mode;
@@ -54,28 +50,29 @@ public class SamsungProtocol extends Protocol {
             case AcState.FAN_LOW: fan = 2; break;
             case AcState.FAN_MED: fan = 4; break;
             case AcState.FAN_HIGH: fan = 5; break;
-            default: fan = (mode == 0) ? 6 : 0; break;
+            default: fan = 0; break;
         }
-        int powerBits = s.power ? 0b11 : 0b00;
+        if (mode == 0) fan = 6;                   // auto mode only accepts its own fan value
+        int powerBits = 0b11;
 
         b[6] = (b[6] & 0xCF) | (powerBits << 4);
         b[7] = 0x01;
         b[13] = (b[13] & 0xCF) | (powerBits << 4);
         b[11] = (b[11] & 0x0F) | (((temp - 16) & 0x0F) << 4);
-        b[12] = (fan & 0x07) << 1 | ((mode & 0x07) << 4);
-        b[9] = (b[9] & 0x0F) | ((s.swingV ? 0b011 : 0b000) << 4);
+        b[12] = 0x01 | ((fan & 0x07) << 1) | ((mode & 0x07) << 4);
+        // Swing field: 0b010 = vertical swing, 0b111 = off (library values).
+        b[9] = (b[9] & 0x8F) | ((s.swingV ? 0b010 : 0b111) << 4);
         if (s.turbo) b[10] = (b[10] & 0xF1) | (0b001 << 1);
-        if (s.sleep) b[5] |= 0x10;
         b[5] = (b[5] & 0xEF) | (s.sleep ? 0x10 : 0);
 
         // Checksums for the two sections.
         fixSection(b, 0);
         fixSection(b, 7);
 
+        debugRaw = b.clone();
         Signal standard = frame(b, 14, MESSAGE_GAP, true);
-        if (!justTurnedOn) return standard;
-        // When powering on from a known-off state, the unit expects the special
-        // extended "on" message first.
+        // Samsung units in standby need the special extended "on" message
+        // before they will accept the normal state, so always send it first.
         Signal on = frame(EXT_ON, EXT_ON.length, 20000, false);
         int[] combined = new int[on.pattern.length + standard.pattern.length];
         System.arraycopy(on.pattern, 0, combined, 0, on.pattern.length);

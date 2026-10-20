@@ -3,7 +3,17 @@ package com.mjd.acremote.ac;
 import com.mjd.acremote.ir.PulseBuilder;
 import com.mjd.acremote.ir.Signal;
 
-/** Midea (ميديا) - 48 bit protocol, sent as data + inverted data. */
+/**
+ * Midea (ميديا) - 48 bit protocol, sent as data + inverted data.
+ *
+ * Byte layout (wire order, verified against IRremoteESP8266):
+ *   0: 0xA1                (type 1 + header 0b10100)
+ *   1: power | sleep | fan | mode
+ *   2: 0x60 | (Fahrenheit - 62)
+ *   3: 0xFF                (timer / sensor disabled)
+ *   4: 0xFF
+ *   5: checksum            (bit-reversed two's complement of reversed bytes 0..4)
+ */
 public class MideaProtocol extends Protocol {
     private static final int TICK = 80;
     private static final int HDR_MARK = 56 * TICK;   // 4480
@@ -27,22 +37,30 @@ public class MideaProtocol extends Protocol {
             case AcState.MODE_FAN: mode = 4; break;
             default: mode = 0; break;
         }
-        int fan = Math.min(3, Math.max(0, s.fan));
+        int fan;
+        switch (s.fan) {
+            case AcState.FAN_LOW: fan = 1; break;
+            case AcState.FAN_MED: fan = 2; break;
+            case AcState.FAN_HIGH: fan = 3; break;
+            default: fan = 0; break;
+        }
         int temp = clamp(s.temp, minTemp, maxTemp);
+        int fahrenheit = (temp * 9) / 5 + 32;          // same rounding as the library
+        int tempField = clamp(fahrenheit - 62, 0, 24);
 
         int[] b = new int[6];
-        b[1] = 0x7F;                                   // sensor disabled
-        b[2] = 0x01;                                   // no timers
-        b[3] = (temp - 17) & 0x1F;
-        b[4] = (mode & 0x07) | ((fan & 0x03) << 3)
-                | (s.sleep ? 0x40 : 0) | (s.power ? 0x80 : 0);
-        b[5] = 0xA1;                                   // type 1 + header 0b10100
+        b[0] = 0xA1;
+        b[1] = (s.power ? 0x80 : 0x00) | (s.sleep ? 0x40 : 0x00)
+                | ((fan & 0x03) << 3) | (mode & 0x07);
+        b[2] = 0x60 | tempField;
+        b[3] = 0xFF;
+        b[4] = 0xFF;
 
         int sum = 0;
-        for (int i = 1; i <= 5; i++) sum += Integer.reverse(b[i] & 0xFF) >>> 24;
-        sum = (256 - (sum & 0xFF)) & 0xFF;
-        b[0] = Integer.reverse(sum) >>> 24;
+        for (int i = 0; i < 5; i++) sum += reverse8(b[i]);
+        b[5] = reverse8((0x100 - (sum & 0xFF)) & 0xFF);
 
+        debugRaw = b.clone();
         byte[] data = new byte[6];
         for (int i = 0; i < 6; i++) data[i] = (byte) b[i];
         byte[] inv = new byte[6];
@@ -52,13 +70,17 @@ public class MideaProtocol extends Protocol {
         for (int phase = 0; phase < 2; phase++) {
             byte[] d = phase == 0 ? data : inv;
             p.mark(HDR_MARK).space(HDR_SPACE);
-            for (int i = 0; i < 6; i++) {
-                // Each byte MSB-first followed by its inverse.
-                p.bitsMSB(d[i] & 0xFF, 8, BIT_MARK, ONE_SPACE, ZERO_SPACE);
-                p.bitsMSB((~d[i]) & 0xFF, 8, BIT_MARK, ONE_SPACE, ZERO_SPACE);
-            }
+            p.bytesMSB(d, 0, 6, BIT_MARK, ONE_SPACE, ZERO_SPACE);
             p.mark(BIT_MARK).space(MIN_GAP);
         }
         return p.build(38000);
+    }
+
+    static int reverse8(int v) {
+        int out = 0;
+        for (int i = 0; i < 8; i++) {
+            out = (out << 1) | ((v >> i) & 1);
+        }
+        return out & 0xFF;
     }
 }

@@ -16,10 +16,10 @@ public class ToshibaProtocol extends Protocol {
     @Override
     public Signal encode(AcState s) {
         int[] b = new int[9];
-        b[0] = 0x0D;  // inverted pair
-        b[1] = 0xF2;
-        b[2] = 0xFC;  // inverted length (len=3)
-        b[3] = 0x03;
+        b[0] = 0xF2;
+        b[1] = 0x0D;  // inverted
+        b[2] = 0x03;  // payload length
+        b[3] = 0xFC;  // inverted
         b[4] = 0x01;
         int mode;
         switch (s.mode) {
@@ -39,20 +39,24 @@ public class ToshibaProtocol extends Protocol {
             default: fan = 0; break;
         }
         int temp = clamp(s.temp, minTemp, maxTemp);
-        b[5] = ((temp - 17) & 0x0F) << 4;   // swing off
+        b[5] = ((temp - 17) & 0x0F) << 4;
         b[6] = (mode & 0x07) | ((fan & 0x07) << 5);
         b[7] = 0x00;
         int sum = 0;
         for (int i = 0; i < 8; i++) sum ^= b[i];
         b[8] = sum & 0xFF;
 
+        debugRaw = b.clone();
         byte[] data = new byte[9];
         for (int i = 0; i < 9; i++) data[i] = (byte) b[i];
 
         PulseBuilder p = new PulseBuilder();
-        p.mark(HDR_MARK).space(HDR_SPACE);
-        p.bytesMSB(data, 0, 9, BIT_MARK, ONE_SPACE, ZERO_SPACE);
-        p.mark(BIT_MARK).space(GAP);
+        // Toshiba remotes repeat the whole frame twice.
+        for (int rep = 0; rep < 2; rep++) {
+            p.mark(HDR_MARK).space(HDR_SPACE);
+            p.bytesMSB(data, 0, 9, BIT_MARK, ONE_SPACE, ZERO_SPACE);
+            p.mark(BIT_MARK).space(GAP);
+        }
         return p.build(38000);
     }
 }

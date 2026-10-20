@@ -56,6 +56,7 @@ public class KelvinatorProtocol extends Protocol {
         b[15] = blockChecksum(b, 8) << 4;
         b[14] = (fan & 0x07) << 4;
 
+        debugRaw = b.clone();
         byte[] data = new byte[16];
         for (int i = 0; i < 16; i++) data[i] = (byte) b[i];
 

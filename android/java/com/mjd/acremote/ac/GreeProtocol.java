@@ -58,6 +58,7 @@ public class GreeProtocol extends Protocol {
         byte[] data = new byte[8];
         for (int i = 0; i < 8; i++) data[i] = (byte) b[i];
 
+        debugRaw = b.clone();
         PulseBuilder p = new PulseBuilder();
         p.mark(HDR_MARK).space(HDR_SPACE);
         // Block #1 (4 bytes) + footer 0b010

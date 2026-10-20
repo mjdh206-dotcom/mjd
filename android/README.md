@@ -1,6 +1,8 @@
 # ريموت المكيف برو — AC Remote Pro
 
-**تحميل APK (الأحدث 1.1.0):** [ACRemotePro-1.1.0.apk](https://github.com/mjdh206-dotcom/mjd/raw/arena/18a8441b-mjd/android/ACRemotePro-1.1.0.apk)
+**تحميل APK (الأحدث 1.1.1):** [ACRemotePro-1.1.1.apk](https://github.com/mjdh206-dotcom/mjd/raw/arena/18a8441b-mjd/android/ACRemotePro-1.1.1.apk)
+
+**الإصدار السابق:** [ACRemotePro-1.1.0.apk](https://github.com/mjdh206-dotcom/mjd/raw/arena/18a8441b-mjd/android/ACRemotePro-1.1.0.apk)
 
 **الإصدار السابق:** [ACRemotePro-1.0.0.apk](https://github.com/mjdh206-dotcom/mjd/raw/arena/18a8441b-mjd/android/ACRemotePro-1.0.0.apk)
 
@@ -20,7 +22,17 @@
 Gree · Midea · Coolix · LG · Samsung · TCL · Haier · Toshiba · Panasonic · Mitsubishi · Daikin ·
 Sharp · Hitachi · Fujitsu · Carrier · Electra · Kelvinator  (17 بروتوكولًا + نسخ بديلة)
 
-> تمت برمجة الأكواد يدويًا اعتمادًا على مواصفات مشروع IRremoteESP8266 مفتوح المصدر.
+> تمت برمجة الأكواد اعتمادًا على مواصفات مشروع IRremoteESP8266 مفتوح المصدر.
+
+## ما الجديد في 1.1.1
+- تدقيق كامل لبصمات البايتات (mode / temp / fan / power / checksum) في البروتوكولات الـ17
+  مقابل مكتبة IRremoteESP8266: صُحّحت Midea وSamsung وTCL وHaier وPanasonic وMitsubishi
+  وDaikin وFujitsu وSharp وHitachi وCarrier وElectra وCoolix.
+- إعادة توقيت Carrier (8940/4556µs ونبضة 503µs) وإرسال إطار واحد بدل ثلاثة، وترتيب بتات
+  Carrier الصحيح (LSB أولًا) ليطابق الإرسال الأصلي.
+- Fujitsu: رسالة الإطفاء القصيرة (7 بايت) وإرسال إطارين للتشغيل، وToshiba يرسل إطارين.
+- Samsung: إرسال رسالة التشغيل الممتدة دائمًا قبل الحالة العادية (ضروري للخروج من الاستعداد).
+- بحث تلقائي مستمر: عند نهاية الجولة يبدأ جولة جديدة بالنسخ البديلة تلقائيًا دون تدخل.
 
 ## متطلبات التشغيل
 - أندرويد 6.0 (API 23) أو أحدث.

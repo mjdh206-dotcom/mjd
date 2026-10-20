@@ -49,6 +49,7 @@ public class LgProtocol extends Protocol {
         }
         raw |= (sum & 0x0F);
 
+        debugRaw = new int[]{(raw >> 24) & 0xFF, (raw >> 16) & 0xFF, (raw >> 8) & 0xFF, raw & 0xFF};
         PulseBuilder p = new PulseBuilder();
         if (variant == 1) {
             // LG2 variant used by many LG split units.

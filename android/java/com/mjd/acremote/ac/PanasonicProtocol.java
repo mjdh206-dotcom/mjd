@@ -40,14 +40,15 @@ public class PanasonicProtocol extends Protocol {
         if (s.mode == AcState.MODE_FAN) temp = 27;
 
         b[13] = (mode << 4) | (s.power ? 0x01 : 0x00);
-        b[14] = (b[14] & 0xC0) | (temp & 0x1F);
+        b[14] = (b[14] & 0xC0) | ((temp * 2) & 0x3E);
         int swingV = s.swingV ? 0x0F : 0x03;
-        b[16] = ((fan + 3) & 0x0F) << 4 | (swingV & 0x0F);
-        b[17] = (b[17] & 0xF0) | (s.swingH ? 0x0D : 0x06);
+        b[16] = (((fan + 3) & 0x0F) << 4) | (swingV & 0x0F);
+        b[17] = (b[17] & 0xF0) | (s.swingH ? 0x0D : 0x00);
         int sum = 0xF4;
         for (int i = 0; i < 26; i++) sum += b[i];
         b[26] = sum & 0xFF;
 
+        debugRaw = b.clone();
         byte[] data = new byte[27];
         for (int i = 0; i < 27; i++) data[i] = (byte) b[i];
 

@@ -45,6 +45,7 @@ public class HaierProtocol extends Protocol {
         for (int i = 0; i < 8; i++) sum += b[i];
         b[8] = sum & 0xFF;
 
+        debugRaw = b.clone();
         byte[] data = new byte[9];
         for (int i = 0; i < 9; i++) data[i] = (byte) b[i];
 

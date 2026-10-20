@@ -36,7 +36,7 @@ public class MitsubishiProtocol extends Protocol {
             case AcState.FAN_HIGH: fan = 4; break;
             default: fan = 0; break;
         }
-        int vane = s.swingV ? 0b111 : 0b011;
+        int vane = s.swingV ? 0b111 : 0b000;
 
         b[5] = (b[5] & 0xDF) | (s.power ? 0x20 : 0x00);
         b[6] = (b[6] & 0xC7) | ((mode & 0x07) << 3);
@@ -47,11 +47,12 @@ public class MitsubishiProtocol extends Protocol {
             case AcState.MODE_FAN: b[8] = 0x37; break;
         }
         b[7] = (b[7] & 0xF0) | ((temp - 16) & 0x0F);
-        b[9] = (fan & 0x07) | ((vane & 0x07) << 3) | (fan == 0 ? 0x80 : 0x00);
+        b[9] = 0x40 | (fan & 0x07) | ((vane & 0x07) << 3) | (fan == 0 ? 0x80 : 0x00);
         int sum = 0;
         for (int i = 0; i < 17; i++) sum += b[i];
         b[17] = sum & 0xFF;
 
+        debugRaw = b.clone();
         byte[] data = new byte[18];
         for (int i = 0; i < 18; i++) data[i] = (byte) b[i];
 

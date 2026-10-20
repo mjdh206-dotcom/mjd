@@ -31,6 +31,9 @@ public abstract class Protocol {
     /** Selected encoding variant (some brands use several code formats). */
     public int variant = 0;
 
+    /** Last encoded payload bytes (kept for verification / debugging). */
+    public int[] debugRaw;
+
     public abstract Signal encode(AcState state);
 
     public AcState defaultState() {

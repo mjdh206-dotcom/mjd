@@ -35,16 +35,19 @@ public class TclProtocol extends Protocol {
             case AcState.FAN_HIGH: fan = 5; break;
             default: fan = 0; break;
         }
+        if (s.mode == AcState.MODE_FAN) fan = 5;   // fan mode is locked to high
         int temp = clamp(s.temp, minTemp, 30);
 
         b[5] = (b[5] & ~0x04) | (s.power ? 0x04 : 0);
-        if (s.light) b[5] |= 0x40; else b[5] &= ~0x40;
+        // The display bit is inverted in this protocol.
+        if (s.light) b[5] &= ~0x40; else b[5] |= 0x40;
         if (s.econo) b[5] |= 0x80; else b[5] &= ~0x80;
         b[6] = (b[6] & 0xF0) | (mode & 0x0F);
         if (s.turbo) b[6] |= 0x20; else b[6] &= ~0x20;
-        b[7] = (b[7] & 0xF0) | ((temp - 16) & 0x0F);
-        b[8] = (fan & 0x07) | ((s.swingV ? 0b111 : 0b000) << 3);
-        b[12] = 0x80;
+        b[7] = (b[7] & 0xF0) | ((31 - temp) & 0x0F);
+        b[8] = (b[8] & 0xF8) | (fan & 0x07);
+        b[8] = (b[8] & 0xC7) | ((s.swingV ? 0b111 : 0b000) << 3);
+        b[12] = 0x00;
         if (s.swingH) b[12] |= 0x08;
 
         int sum = 0;
@@ -52,6 +55,7 @@ public class TclProtocol extends Protocol {
         if (b[3] == 0x02) sum += 0x0F;
         b[13] = sum & 0xFF;
 
+        debugRaw = b.clone();
         byte[] data = new byte[14];
         for (int i = 0; i < 14; i++) data[i] = (byte) b[i];
 

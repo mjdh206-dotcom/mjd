@@ -5,9 +5,9 @@ import com.mjd.acremote.ir.Signal;
 
 /** Carrier 64-bit (كاريير). */
 public class CarrierProtocol extends Protocol {
-    private static final int HDR_MARK = 8532, HDR_SPACE = 4228;
-    private static final int BIT_MARK = 628, ONE_SPACE = 1320, ZERO_SPACE = 532;
-    private static final int GAP = 20000;
+    private static final int HDR_MARK = 8940, HDR_SPACE = 4556;
+    private static final int BIT_MARK = 503, ONE_SPACE = 1736, ZERO_SPACE = 615;
+    private static final int GAP = 100000;
 
     private static final int[] RESET = {0x10, 0x90, 0x00, 0x00, 0x2C, 0x2A, 0x55, 0x84};
 
@@ -33,25 +33,24 @@ public class CarrierProtocol extends Protocol {
         }
         int temp = clamp(s.temp, minTemp, maxTemp);
 
-        b[2] = ((mode & 0x03) << 4) | ((fan & 0x03) << 6);
-        b[3] = ((temp - 16) & 0x0F) | (s.swingV ? 0x20 : 0x00);
-        b[4] = (b[4] & 0xEF) | (s.power ? 0x10 : 0x00);
+        b[3] = (s.power ? 0x10 : 0x00);
+        b[4] = ((temp - 16) & 0x0F) | (s.swingV ? 0x20 : 0x00);
+        b[5] = ((mode & 0x03) << 4) | ((fan & 0x03) << 6);
 
         long raw = 0;
         for (int i = 0; i < 8; i++) raw = (raw << 8) | (b[i] & 0xFFL);
         // 4-bit checksum of every nibble above bit 20.
         int sum = 0;
         for (int i = 0; i < 11; i++) sum += (raw >>> (20 + i * 4)) & 0x0F;
-        raw = (raw & ~0xF0000L) | (((long) (sum & 0x0F)) << 16);
+        raw = (raw & ~0x000F0000L) | (((long) (sum & 0x0F)) << 16);
+        b[5] = (b[5] & 0xF0) | (sum & 0x0F);
 
+        debugRaw = b.clone();
         PulseBuilder p = new PulseBuilder();
-        long frame = raw;
-        for (int i = 0; i < 3; i++) {
-            p.mark(HDR_MARK).space(HDR_SPACE);
-            p.bitsMSB(frame, 64, BIT_MARK, ONE_SPACE, ZERO_SPACE);
-            p.mark(BIT_MARK).space(GAP);
-            frame = ~frame;
-        }
+        p.mark(HDR_MARK).space(HDR_SPACE);
+        // The library sends this 64-bit word least-significant bit first.
+        p.bitsMSB(Long.reverse(raw), 64, BIT_MARK, ONE_SPACE, ZERO_SPACE);
+        p.mark(BIT_MARK).space(GAP);
         return p.build(38000);
     }
 }
