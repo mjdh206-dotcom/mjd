@@ -92,7 +92,48 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
     fun updateRouterPassword(newPass: String) {
         routerPassword = newPass.trim().ifEmpty { "admin" }
         store.routerPassword = routerPassword
-        showBanner("تم حفظ كلمة سر الراوتر للفصل الأوتوماتيكي")
+        showBanner("تم حفظ كلمة سر الراوتر وجاري تحديث الأجهزة المتصلة بالراوتر...")
+        startScan(deepCameraScan = false)
+    }
+
+    /**
+     * دمج بيانات المتصلين الحقيقية (الاسم + الـ MAC الحقيقي + الـ IP) المستخرجة من جلسة الراوتر مباشرة
+     */
+    fun mergeRouterDomText(rawHtmlOrText: String) {
+        if (rawHtmlOrText.isBlank()) return
+        viewModelScope.launch {
+            val parsed = com.haris.wifi.net.RouterApiEngine.parseClientsFromResponse(
+                raw = rawHtmlOrText,
+                gatewayIp = networkInfo.gatewayIp,
+            )
+            if (parsed.isEmpty()) return@launch
+            val savedMeta = store.loadAllMeta()
+            val currentMap = devices.associateBy { it.ip }.toMutableMap()
+
+            parsed.forEach { rc ->
+                val existing = currentMap[rc.ip]
+                val realMac = rc.mac.uppercase()
+                val vendorMatch = MacVendorDb.identify(
+                    ip = rc.ip,
+                    mac = realMac,
+                    hostname = rc.hostname,
+                    openPorts = existing?.openPorts ?: emptyList(),
+                    isGateway = rc.ip == networkInfo.gatewayIp,
+                    isSelf = rc.ip == networkInfo.localIp,
+                )
+                val meta = savedMeta[realMac] ?: savedMeta[rc.ip]
+                currentMap[rc.ip] = (existing ?: ConnectedDevice(ip = rc.ip, mac = realMac)).copy(
+                    mac = realMac,
+                    hostname = rc.hostname.ifBlank { existing?.hostname ?: "" },
+                    vendorAr = vendorMatch.vendorAr,
+                    defaultNameAr = vendorMatch.defaultNameAr,
+                    customName = meta?.customName ?: existing?.customName ?: "",
+                    deviceType = vendorMatch.deviceType,
+                    isBlocked = meta?.isBlocked ?: existing?.isBlocked ?: false,
+                )
+            }
+            devices = scanner.sortDevices(currentMap.values.toList())
+        }
     }
 
     fun getCutPacketsFor(device: ConnectedDevice): Long {
@@ -118,6 +159,8 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
             val found = scanner.scanSubnet(
                 netInfo = info,
                 savedMeta = savedMeta,
+                routerUser = "admin",
+                routerPass = routerPassword,
                 deepCameraScan = deepCameraScan,
                 onProgress = { progress, text ->
                     scanProgress = progress

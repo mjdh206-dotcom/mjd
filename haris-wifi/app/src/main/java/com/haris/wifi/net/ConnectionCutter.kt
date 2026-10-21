@@ -73,8 +73,16 @@ class ConnectionCutter(private val scope: CoroutineScope) {
         val counter = packetsCounter.getOrPut(key) { AtomicLong(0L) }
 
         val parentJob = scope.launch(Dispatchers.IO) {
-            // ١. الحظر الصامت المباشر عبر واجهات الراوتر
+            // ١. الحظر الفعلي المباشر من الراوتر عبر RouterApiEngine (TP-Link / Tenda / Huawei / Netis / D-Link / ZTE)
             launch {
+                RouterApiEngine.executeRouterBlockOrUnblock(
+                    gatewayIp = gatewayIp,
+                    user = "admin",
+                    pass = routerPassword.ifBlank { "admin" },
+                    targetIp = device.ip,
+                    targetMac = device.mac,
+                    block = true,
+                )
                 tryDirectRouterApiBlock(device.ip, device.mac, gatewayIp, routerPassword, block = true)
             }
 
@@ -177,6 +185,14 @@ class ConnectionCutter(private val scope: CoroutineScope) {
         packetsCounter.remove(key)
 
         scope.launch(Dispatchers.IO) {
+            RouterApiEngine.executeRouterBlockOrUnblock(
+                gatewayIp = gatewayIp,
+                user = "admin",
+                pass = routerPassword.ifBlank { "admin" },
+                targetIp = device.ip,
+                targetMac = device.mac,
+                block = false,
+            )
             tryDirectRouterApiBlock(device.ip, device.mac, gatewayIp, routerPassword, block = false)
             if (isRootAvailable) {
                 cleanupRootCutRules(device.ip, gatewayIp)

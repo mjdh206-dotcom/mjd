@@ -1,9 +1,11 @@
 package com.haris.wifi.ui
 
 import android.annotation.SuppressLint
+import android.webkit.JavascriptInterface
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,6 +26,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -63,19 +67,16 @@ import com.haris.wifi.ui.theme.TextWhite
 
 @Composable
 fun HomeScreen(vm: HarisViewModel) {
-    // نعرض فقط الموبايلات والكاميرات القابلة للفصل في الأعلى، وتحتها معلومات الشبكة ببساطة تامة
     val controllableDevices = vm.devices.filter { it.canDisconnect }
     val activeCount = controllableDevices.count { !it.isBlocked }
     val blockedCount = controllableDevices.count { it.isBlocked }
+    var showLiveRouterBox by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Obsidian)
     ) {
-        // محرك الراوتر الصامت المخفي: ينفذ الحظر من الراوتر في الخلفية تلقائياً عند ضغط «فصل النت» بدون فتح أي شاشة!
-        SilentBackgroundRouterBlocker(vm = vm)
-
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
@@ -83,29 +84,42 @@ fun HomeScreen(vm: HarisViewModel) {
         ) {
             // ١. العنوان البسيط + توقيع المبرمج Amjad omega
             item {
-                SimpleTopHeader(ssid = vm.networkInfo.ssid)
+                SimpleTopHeader(
+                    ssid = vm.networkInfo.ssid,
+                    gatewayIp = vm.networkInfo.gatewayIp,
+                )
             }
 
-            // ٢. زر واحد فقط لتحديث قائمة الموبايلات المتصلة + زر فصل الكل بكبسة
+            // ٢. بطاقة التحديث + ربط الراوتر بضغطة واحدة للفصل المؤكد ١٠٠٪
             item {
                 SimpleControlCard(
                     vm = vm,
                     activeCount = activeCount,
                     blockedCount = blockedCount,
+                    showLiveRouterBox = showLiveRouterBox,
+                    onToggleLiveRouter = { showLiveRouterBox = !showLiveRouterBox },
                 )
             }
 
-            // ٣. عنوان القائمة
+            // ٣. محرك الراوتر الذكي (يعمل في الخلفية تلقائياً، أو يظهر عند الطلب لتأكيد الفصل من الراوتر)
+            item {
+                SmartRouterConnectorEngine(
+                    vm = vm,
+                    visible = showLiveRouterBox,
+                )
+            }
+
+            // ٤. عنوان قائمة الأجهزة المتصلة بالراوتر
             item {
                 Text(
-                    text = "الموبايلات والأجهزة المتصلة بالشبكة (${controllableDevices.size}):",
+                    text = "الأجهزة والموبايلات المتصلة بالراوتر (${controllableDevices.size}):",
                     style = MaterialTheme.typography.titleMedium,
                     color = TextWhite,
                     fontWeight = FontWeight.Bold,
                 )
             }
 
-            // ٤. قائمة الموبايلات المتصلة — كل موبايل أمامه كبسة واحدة فقط: «فصل النت ✂️»
+            // ٥. قائمة الأجهزة المتصلة — كل جهاز أمامه كبسة واحدة: «فصل النت ✂️»
             if (controllableDevices.isEmpty()) {
                 item {
                     Box(
@@ -118,8 +132,8 @@ fun HomeScreen(vm: HarisViewModel) {
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = if (vm.isScanning) "جاري البحث عن الموبايلات المتصلة..."
-                            else "لا توجد موبايلات أخرى متصلة حالياً — اضغط «تحديث القائمة»",
+                            text = if (vm.isScanning) "جاري سحب الأجهزة المتصلة من الراوتر..."
+                            else "لا توجد أجهزة أخرى متصلة حالياً — اضغط «تحديث الأجهزة المتصلة»",
                             style = MaterialTheme.typography.bodyLarge,
                             color = TextWhite,
                             textAlign = TextAlign.Center,
@@ -139,7 +153,7 @@ fun HomeScreen(vm: HarisViewModel) {
                 }
             }
 
-            // ٥. توقيع المبرمج الثابت في الأسفل
+            // ٦. توقيع المبرمج الثابت في الأسفل
             item {
                 Spacer(Modifier.height(10.dp))
                 Box(
@@ -166,7 +180,7 @@ fun HomeScreen(vm: HarisViewModel) {
 }
 
 @Composable
-private fun SimpleTopHeader(ssid: String) {
+private fun SimpleTopHeader(ssid: String, gatewayIp: String) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -188,20 +202,19 @@ private fun SimpleTopHeader(ssid: String) {
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(
-                    text = "حارس الشبكة — بدون روت",
+                    text = "حارس الشبكة — قاطع نت الراوتر",
                     style = MaterialTheme.typography.titleLarge,
                     color = TextWhite,
                     fontWeight = FontWeight.ExtraBold,
                 )
                 Text(
-                    text = "الشبكة المتصلة: $ssid",
+                    text = "الشبكة: $ssid · الراوتر: $gatewayIp",
                     style = MaterialTheme.typography.bodySmall,
                     color = EmeraldBright,
                 )
             }
         }
 
-        // شريط توقيع المبرمج البارز
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -231,7 +244,12 @@ private fun SimpleControlCard(
     vm: HarisViewModel,
     activeCount: Int,
     blockedCount: Int,
+    showLiveRouterBox: Boolean,
+    onToggleLiveRouter: () -> Unit,
 ) {
+    var passInput by remember(vm.routerPassword) { mutableStateOf(vm.routerPassword) }
+    var showPassEditor by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -241,14 +259,13 @@ private fun SimpleControlCard(
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        // ملخص سريع جداً بسطر واحد
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "🟢 متصل بالنت الآن: $activeCount",
+                text = "🟢 متصل بالراوتر: $activeCount",
                 style = MaterialTheme.typography.titleSmall,
                 color = EmeraldBright,
                 fontWeight = FontWeight.Bold,
@@ -259,6 +276,88 @@ private fun SimpleControlCard(
                 color = CoralBright,
                 fontWeight = FontWeight.Bold,
             )
+        }
+
+        // شريط صغير لضبط باسورد الراوتر (لأن فصل النت بدون روت يتم عبر الراوتر مباشرة)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(DeepNavy)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "🔑 كلمة سر الراوتر: ${vm.routerPassword}",
+                style = MaterialTheme.typography.labelMedium,
+                color = TextSilver,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(CardElevated)
+                        .clickable { showPassEditor = !showPassEditor }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = if (showPassEditor) "إغلاق" else "تعديل الباسورد",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CyberSky,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(CardElevated)
+                        .clickable { onToggleLiveRouter() }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = if (showLiveRouterBox) "إخفاء الراوتر ▲" else "شاشة الراوتر ▼",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = AmberWarn,
+                    )
+                }
+            }
+        }
+
+        AnimatedVisibility(visible = showPassEditor) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = passInput,
+                    onValueChange = { passInput = it },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    placeholder = { Text("باسورد الراوتر (الافتراضي admin)", color = TextSilver) },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Emerald,
+                        unfocusedBorderColor = BorderSubtle,
+                        focusedContainerColor = DeepNavy,
+                        unfocusedContainerColor = DeepNavy,
+                        focusedTextColor = TextWhite,
+                        unfocusedTextColor = TextWhite,
+                    ),
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Emerald)
+                        .clickable {
+                            vm.updateRouterPassword(passInput)
+                            showPassEditor = false
+                        }
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                ) {
+                    Text("حفظ وربط", color = Color(0xFF032219), fontWeight = FontWeight.Bold)
+                }
+            }
         }
 
         if (vm.isScanning) {
@@ -278,7 +377,6 @@ private fun SimpleControlCard(
             )
         }
 
-        // زر تحديث القائمة الكبير
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -289,15 +387,14 @@ private fun SimpleControlCard(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = if (vm.isScanning) "جاري البحث عن الموبايلات... (${(vm.scanProgress * 100).toInt()}%)"
-                else "🔄  تحديث قائمة الموبايلات المتصلة",
+                text = if (vm.isScanning) "جاري سحب المتصلين من الراوتر... (${(vm.scanProgress * 100).toInt()}%)"
+                else "🔄  إظهار وتحديث الأجهزة المتصلة بالراوتر",
                 style = MaterialTheme.typography.titleMedium,
                 color = if (vm.isScanning) TextSilver else Color(0xFF032219),
                 fontWeight = FontWeight.ExtraBold,
             )
         }
 
-        // أزرار جماعية بكبسة واحدة فقط عند الحاجة
         if (activeCount > 0 || blockedCount > 0) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -346,10 +443,6 @@ private fun SimpleControlCard(
     }
 }
 
-/**
- * بطاقة الجهاز المبسطة لأقصى درجة:
- * اسم الموبايل واضح + كبسة واحدة فقط على اليسار («فصل النت ✂️» أو «إعادة النت ↺»)
- */
 @Composable
 private fun SimplePhoneRowCard(
     device: ConnectedDevice,
@@ -372,7 +465,6 @@ private fun SimplePhoneRowCard(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        // اليمين: أيقونة الموبايل + اسمه الواضح (الضغط على الاسم يتيح تغييره)
         Row(
             modifier = Modifier
                 .weight(1f)
@@ -404,9 +496,9 @@ private fun SimplePhoneRowCard(
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = if (isCut) {
-                        "🔴 تم فصل النت عنه · ${device.ip}"
+                        "🔴 تم فصل النت عنه من الراوتر · ${device.ip}"
                     } else {
-                        "🟢 متصل بالنت · ${device.vendorAr} (${device.ip})"
+                        "🟢 متصل بالراوتر · ${device.ip} · ${device.mac}"
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = if (isCut) CoralBright else TextSilver,
@@ -414,7 +506,7 @@ private fun SimplePhoneRowCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "اضغط هنا لتغيير اسم الموبايل ✎",
+                    text = "اضغط هنا لتغيير اسم الجهاز ✎",
                     style = MaterialTheme.typography.labelSmall,
                     color = CyberSky.copy(alpha = 0.85f),
                 )
@@ -423,7 +515,6 @@ private fun SimplePhoneRowCard(
 
         Spacer(Modifier.width(10.dp))
 
-        // اليسار: كبسة واحدة كبيرة فقط لفصل أو إعادة النت!
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(14.dp))
@@ -443,68 +534,166 @@ private fun SimplePhoneRowCard(
 }
 
 /**
- * محرك الراوتر الصامت في الخلفية:
- * يعمل بشكل مخفي تماماً بدون إزعاج المستخدم بأي شاشة، وعندما يضغط المستخدم «فصل النت ✂️»
- * يقوم بتسجيل الدخول لصفحة الراوتر وتنفيذ أمر حظر الماك والـ IP أوتوماتيكياً!
+ * محرك الربط المباشر مع الراوتر:
+ * ١. يدخل إلى صفحة الراوتر (192.168.1.1) تلقائياً بباسورد الراوتر المحفوظ
+ * ٢. يقرأ الأسماء وعناوين الـ MAC الحقيقية ١٠٠٪ للأجهزة المتصلة بالراوتر ويرسلها للتطبيق
+ * ٣. عند الضغط على «✂️ فصل النت» يقوم بالبحث عن الماك والـ IP داخل الراوتر (حتى داخل الـ iframes)
+ *    ويضغط زر الحظر / إيقاف الإنترنت / الإضافة لقائمة الحظر تلقائياً!
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun SilentBackgroundRouterBlocker(vm: HarisViewModel) {
+private fun SmartRouterConnectorEngine(
+    vm: HarisViewModel,
+    visible: Boolean,
+) {
     val cmd = vm.silentRouterCutCommand
     val gatewayIp = vm.networkInfo.gatewayIp
     val pass = vm.routerPassword
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
 
+    // عند تغيير باسورد الراوتر نعيد تسجيل الدخول تلقائياً
+    LaunchedEffect(pass, gatewayIp) {
+        webViewRef?.loadUrl("http://$gatewayIp")
+    }
+
+    // عند ضغط «فصل النت ✂️» على أي جهاز، ننفذ الحظر التلقائي داخل جلسة الراوتر الحية
     LaunchedEffect(cmd) {
         val target = cmd?.first ?: return@LaunchedEffect
         val wv = webViewRef ?: return@LaunchedEffect
         val mac = target.mac
         val ip = target.ip
-        val js = """
-            (function() {
-                try {
-                    var inputs = document.querySelectorAll('input');
-                    for (var i = 0; i < inputs.length; i++) {
-                        var t = (inputs[i].type || '').toLowerCase();
-                        var n = (inputs[i].name || inputs[i].id || '').toLowerCase();
-                        if (t === 'text' || n.indexOf('user') !== -1) {
-                            if (!inputs[i].value) inputs[i].value = 'admin';
-                        }
-                        if (t === 'password' || n.indexOf('pass') !== -1) {
-                            inputs[i].value = '$pass';
-                        }
-                    }
-                    var rows = document.querySelectorAll('tr, div, li');
-                    for (var r = 0; r < rows.length; r++) {
-                        var txt = (rows[r].innerText || '').toUpperCase();
-                        if (txt.indexOf('$mac') !== -1 || txt.indexOf('$ip') !== -1) {
-                            var sw = rows[r].querySelectorAll('input[type="checkbox"], .switch, button');
-                            for (var k = 0; k < sw.length; k++) sw[k].click();
-                        }
-                    }
-                } catch(e) {}
-            })();
-        """.trimIndent()
-        wv.evaluateJavascript(js, null)
+        val jsBlock = buildRouterAutoBlockJs(mac = mac, ip = ip, pass = pass)
+        wv.evaluateJavascript(jsBlock, null)
     }
 
-    Box(
-        modifier = Modifier
+    val boxModifier = if (visible) {
+        Modifier
+            .fillMaxWidth()
+            .height(320.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .border(1.dp, AmberWarn, RoundedCornerShape(16.dp))
+    } else {
+        Modifier
             .size(1.dp)
             .alpha(0f)
-    ) {
+    }
+
+    Box(modifier = boxModifier) {
         AndroidView(
-            modifier = Modifier.size(1.dp),
+            modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
                 WebView(ctx).apply {
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
+                    settings.useWideViewPort = true
+                    settings.loadWithOverviewMode = true
                     settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                    webViewClient = WebViewClient()
+                    addJavascriptInterface(
+                        object {
+                            @JavascriptInterface
+                            fun onPageDump(content: String) {
+                                vm.mergeRouterDomText(content)
+                            }
+                        },
+                        "HarisRouterBridge"
+                    )
+                    webViewClient = object : WebViewClient() {
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            super.onPageFinished(view, url)
+                            val autoLoginAndExtractJs = """
+                                (function() {
+                                    try {
+                                        var docs = [document];
+                                        var iframes = document.querySelectorAll('iframe, frame');
+                                        for (var f = 0; f < iframes.length; f++) {
+                                            try { if (iframes[f].contentDocument) docs.push(iframes[f].contentDocument); } catch(e) {}
+                                        }
+                                        var fullDump = '';
+                                        for (var d = 0; d < docs.length; d++) {
+                                            var doc = docs[d];
+                                            fullDump += '\n' + (doc.body ? doc.body.innerHTML : '');
+                                            var passInput = doc.querySelector('input[type="password"]');
+                                            if (passInput && !passInput.value) {
+                                                var userInputs = doc.querySelectorAll('input[type="text"], input:not([type])');
+                                                for (var u = 0; u < userInputs.length; u++) {
+                                                    if (!userInputs[u].value) {
+                                                        userInputs[u].value = 'admin';
+                                                        userInputs[u].dispatchEvent(new Event('input', {bubbles:true}));
+                                                    }
+                                                }
+                                                passInput.value = '${vm.routerPassword}';
+                                                passInput.dispatchEvent(new Event('input', {bubbles:true}));
+                                                var btns = doc.querySelectorAll('button, input[type="submit"], input[type="button"], a');
+                                                for (var b = 0; b < btns.length; b++) {
+                                                    var t = (btns[b].innerText || btns[b].value || '').toLowerCase();
+                                                    if (t.indexOf('login') !== -1 || t.indexOf('log in') !== -1 || t.indexOf('دخول') !== -1) {
+                                                        btns[b].click();
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if (window.HarisRouterBridge && fullDump.length > 0) {
+                                            window.HarisRouterBridge.onPageDump(fullDump);
+                                        }
+                                    } catch(e) {}
+                                })();
+                            """.trimIndent()
+                            view?.evaluateJavascript(autoLoginAndExtractJs, null)
+                        }
+                    }
                     loadUrl("http://$gatewayIp")
                     webViewRef = this
                 }
             },
         )
     }
+}
+
+private fun buildRouterAutoBlockJs(mac: String, ip: String, pass: String): String {
+    val macDash = mac.replace(':', '-')
+    return """
+        (function() {
+            try {
+                var docs = [document];
+                var iframes = document.querySelectorAll('iframe, frame');
+                for (var f = 0; f < iframes.length; f++) {
+                    try { if (iframes[f].contentDocument) docs.push(iframes[f].contentDocument); } catch(e) {}
+                }
+                for (var d = 0; d < docs.length; d++) {
+                    var doc = docs[d];
+                    // ١. البحث عن سطر الجهاز المتصل (عبر MAC أو IP) وإيقاف مفتاح الإنترنت أو ضغط Block/Kick
+                    var rows = doc.querySelectorAll('tr, div, li');
+                    for (var r = 0; r < rows.length; r++) {
+                        var txt = (rows[r].innerText || '').toUpperCase();
+                        if (txt.indexOf('$mac') !== -1 || txt.indexOf('$macDash') !== -1 || txt.indexOf('$ip') !== -1) {
+                            var controls = rows[r].querySelectorAll('input[type="checkbox"], .switch, button, a, input[type="button"]');
+                            for (var c = 0; c < controls.length; c++) {
+                                var ct = (controls[c].innerText || controls[c].value || controls[c].title || '').toLowerCase();
+                                if (controls[c].type === 'checkbox' || ct.indexOf('block') !== -1 || ct.indexOf('kick') !== -1 || ct.indexOf('disable') !== -1 || ct.indexOf('حظر') !== -1 || ct.indexOf('فصل') !== -1 || ct.indexOf('إيقاف') !== -1) {
+                                    controls[c].click();
+                                }
+                            }
+                        }
+                    }
+                    // ٢. لصق الماك في أي حقل حظر MAC Filter وحفظه
+                    var inputs = doc.querySelectorAll('input[type="text"], input:not([type])');
+                    for (var i = 0; i < inputs.length; i++) {
+                        var id = (inputs[i].id || inputs[i].name || inputs[i].placeholder || '').toLowerCase();
+                        if (id.indexOf('mac') !== -1 || id.indexOf('filter') !== -1) {
+                            inputs[i].value = '$mac';
+                            inputs[i].dispatchEvent(new Event('input', {bubbles:true}));
+                        }
+                    }
+                    var saveBtns = doc.querySelectorAll('button, input[type="submit"], input[type="button"]');
+                    for (var s = 0; s < saveBtns.length; s++) {
+                        var st = (saveBtns[s].innerText || saveBtns[s].value || '').toLowerCase();
+                        if (st.indexOf('save') !== -1 || st.indexOf('apply') !== -1 || st.indexOf('add') !== -1 || st.indexOf('block') !== -1 || st.indexOf('حفظ') !== -1 || st.indexOf('تطبيق') !== -1) {
+                            saveBtns[s].click();
+                        }
+                    }
+                }
+            } catch(e) {}
+        })();
+    """.trimIndent()
 }

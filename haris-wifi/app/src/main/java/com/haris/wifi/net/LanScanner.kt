@@ -142,6 +142,8 @@ class LanScanner(private val context: Context) {
     suspend fun scanSubnet(
         netInfo: NetworkInfoModel,
         savedMeta: Map<String, SavedDeviceMeta>,
+        routerUser: String = "admin",
+        routerPass: String = "admin",
         deepCameraScan: Boolean = false,
         onProgress: (Float, String) -> Unit,
     ): List<ConnectedDevice> = withContext(Dispatchers.IO) {
@@ -149,9 +151,14 @@ class LanScanner(private val context: Context) {
         val gatewayIp = netInfo.gatewayIp
         val localIp = netInfo.localIp
 
-        onProgress(0.05f, "إرسال إشارات كشف الكاميرات (ONVIF / RTSP / UPnP)...")
+        onProgress(0.05f, "جاري سحب الأجهزة المتصلة من الراوتر ($gatewayIp)...")
 
-        // ١. كشف الكاميرات عبر ONVIF WS-Discovery و SSDP Multicast
+        // ١. سحب القائمة الحقيقية (الاسم + MAC الحقيقي + IP) من الراوتر مباشرة بالتوازي مع كشف ONVIF
+        val routerClients = runCatching {
+            RouterApiEngine.fetchClientsFromRouter(gatewayIp, routerUser, routerPass)
+        }.getOrDefault(emptyList())
+        val routerClientMap = routerClients.associateBy { it.ip }
+
         val onvifCameras = discoverOnvifAndSsdpCameras()
         wakeSubnetArp(subnet)
 
@@ -202,6 +209,23 @@ class LanScanner(private val context: Context) {
 
         val activeProbes = discoveredProbes.filter { it.reachable }.toMutableList()
 
+        // إضافة أي موبايل موجود في جدول الراوتر حتى لو كان في وضع السكون ولم يرد على Ping!
+        routerClients.forEach { rc ->
+            if (rc.ip.startsWith("$subnet.") && activeProbes.none { it.ip == rc.ip }) {
+                activeProbes.add(
+                    HostProbeResult(
+                        ip = rc.ip,
+                        reachable = true,
+                        pingMs = 10,
+                        openPorts = emptyList(),
+                        hostname = rc.hostname,
+                        onvifDetected = false,
+                        rtspDetected = false,
+                    )
+                )
+            }
+        }
+
         // إضافة أي كاميرا ردت على ONVIF ولم تكن في القائمة
         onvifCameras.forEach { camIp ->
             if (camIp.startsWith("$subnet.") && activeProbes.none { it.ip == camIp }) {
@@ -243,28 +267,30 @@ class LanScanner(private val context: Context) {
             activeProbes.add(HostProbeResult(localIp, true, 1, emptyList(), "my-android", false, false))
         }
 
-        // إذا كان الفحص يتم على محاكي بدون شبكة حقيقية، نعرض أجهزة نموذجية تشمل الكاميرات
-        val onlySelfAndGateway = activeProbes.size <= 2
-        if (onlySelfAndGateway) {
+        // لا نضيف أجهزة تجريبية إلا إذا لم يكن الهاتف متصلاً بشبكة واي فاي حقيقية
+        if (!netInfo.isRealWifi && activeProbes.size <= 2) {
             activeProbes.addAll(buildSampleProbesWithCameras(subnet, localIp, gatewayIp))
         }
 
         val devices = activeProbes.map { probe ->
             val isGateway = probe.ip == gatewayIp
             val isSelf = probe.ip == localIp
+            val routerEntry = routerClientMap[probe.ip]
             val hasCamPort = probe.openPorts.any { it in MacVendorDb.cameraPortsSet } ||
                 probe.onvifDetected || probe.rtspDetected
-            val realMac = arpMap[probe.ip]?.takeIf { it != "00:00:00:00:00:00" }
+            val realMac = routerEntry?.mac?.takeIf { it.isNotBlank() }
+                ?: arpMap[probe.ip]?.takeIf { it != "00:00:00:00:00:00" }
             val mac = when {
                 isGateway && netInfo.bssid.isNotBlank() -> netInfo.bssid
                 !realMac.isNullOrBlank() -> realMac.uppercase()
                 else -> MacVendorDb.fallbackMacForIp(probe.ip, isGateway, isCameraHint = hasCamPort)
             }
+            val bestHostname = routerEntry?.hostname?.takeIf { it.isNotBlank() } ?: probe.hostname
 
             val vendorMatch = MacVendorDb.identify(
                 ip = probe.ip,
                 mac = mac,
-                hostname = probe.hostname,
+                hostname = bestHostname,
                 openPorts = probe.openPorts,
                 isGateway = isGateway,
                 isSelf = isSelf,
@@ -281,7 +307,7 @@ class LanScanner(private val context: Context) {
             ConnectedDevice(
                 ip = probe.ip,
                 mac = mac,
-                hostname = probe.hostname,
+                hostname = bestHostname,
                 vendorAr = vendorMatch.vendorAr,
                 defaultNameAr = vendorMatch.defaultNameAr,
                 customName = meta?.customName ?: "",
