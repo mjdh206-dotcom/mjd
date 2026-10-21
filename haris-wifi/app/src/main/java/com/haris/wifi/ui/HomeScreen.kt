@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,6 +71,8 @@ fun HomeScreen(vm: HarisViewModel) {
     val allDevices = vm.devices
     val connectedCount = allDevices.count { !it.isBlocked }
     val blockedCount = allDevices.count { it.isBlocked }
+    val camerasCount = allDevices.count { it.isCamera }
+    val activeCamerasCount = allDevices.count { it.isCamera && !it.isBlocked && it.canDisconnect }
     val strangersActiveCount = allDevices.count { it.isStranger && !it.isBlocked }
     val visibleDevices = vm.filteredDevices()
 
@@ -80,12 +83,17 @@ fun HomeScreen(vm: HarisViewModel) {
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // ١. شريط العنوان العلوي
+        // ١. شريط العنوان العلوي + توقيع المبرمج Amjad omega
         item {
             TopHeaderBar(
                 onOpenRouter = { vm.openRouterBlocker(null) },
                 onToggleSettings = { showSettingsBar = !showSettingsBar },
             )
+        }
+
+        // شارة حقوق البرمجة البارزة
+        item {
+            DeveloperSignatureBanner()
         }
 
         // شريط الإعدادات السريعة المنسدل
@@ -101,33 +109,37 @@ fun HomeScreen(vm: HarisViewModel) {
             }
         }
 
-        // ٢. بطاقة حالة الشبكة وزر الفحص الكبير
+        // ٢. بطاقة حالة الشبكة وزر الفحص الشامل + زر كشف الكاميرات
         item {
             NetworkRadarCard(
                 vm = vm,
                 connectedCount = connectedCount,
+                camerasCount = camerasCount,
                 blockedCount = blockedCount,
                 strangersCount = strangersActiveCount,
             )
         }
 
-        // ٣. أزرار الفصل الجماعي السريع (فصل كل الغرباء / إعادة الجميع)
-        if (strangersActiveCount > 0 || blockedCount > 0) {
+        // ٣. أزرار الفصل الجماعي السريع (فصل الكاميرات / فصل الغرباء / إعادة الجميع)
+        if (activeCamerasCount > 0 || strangersActiveCount > 0 || blockedCount > 0) {
             item {
-                BatchActionsRow(
+                BatchActionsSection(
+                    activeCamerasCount = activeCamerasCount,
                     strangersActiveCount = strangersActiveCount,
                     blockedCount = blockedCount,
+                    onCutAllCameras = { vm.cutAllCameras() },
                     onCutAllStrangers = { vm.cutAllStrangers() },
                     onReconnectAll = { vm.reconnectAllDevices() },
                 )
             }
         }
 
-        // ٤. تبويبات التصفية والبحث السريع
+        // ٤. تبويبات التصفية والبحث السريع (بما فيها تبويب الكاميرات 📷)
         item {
             FilterAndSearchSection(
                 selectedTab = vm.selectedTab,
                 totalCount = allDevices.size,
+                camerasCount = camerasCount,
                 connectedCount = connectedCount,
                 blockedCount = blockedCount,
                 strangersCount = allDevices.count { it.isStranger },
@@ -137,12 +149,13 @@ fun HomeScreen(vm: HarisViewModel) {
             )
         }
 
-        // ٥. قائمة الأجهزة المتصلة
+        // ٥. قائمة الأجهزة والكاميرات المتصلة
         if (visibleDevices.isEmpty()) {
             item {
                 EmptyDevicesBox(
                     selectedTab = vm.selectedTab,
-                    onScanAgain = { vm.startScan() },
+                    onScanAgain = { vm.startScan(deepCameraScan = false) },
+                    onDeepCamScan = { vm.startDeepCameraScan() },
                 )
             }
         } else {
@@ -150,8 +163,10 @@ fun HomeScreen(vm: HarisViewModel) {
                 items = visibleDevices,
                 key = { it.uniqueKey + "_" + it.ip },
             ) { device ->
+                val packetsSent = if (device.isBlocked) vm.getCutPacketsFor(device) else 0L
                 DeviceItemCard(
                     device = device,
+                    cutPacketsSent = packetsSent,
                     onInstantCutToggle = { vm.toggleInstantCut(device) },
                     onOpenOptions = { vm.openDeviceSheet(device) },
                     onOpenRouterBlock = { vm.openRouterBlocker(device) },
@@ -159,9 +174,63 @@ fun HomeScreen(vm: HarisViewModel) {
             }
         }
 
+        // تذييل حقوق المبرمج في أسفل الشاشة
         item {
-            Spacer(Modifier.height(30.dp))
+            Spacer(Modifier.height(8.dp))
+            FooterDeveloperCredit()
+            Spacer(Modifier.height(26.dp))
         }
+    }
+}
+
+@Composable
+private fun DeveloperSignatureBanner() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(Color(0xFF0A2E26), Color(0xFF13233F), Color(0xFF2B1B06))
+                )
+            )
+            .border(1.dp, EmeraldBright.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+            .padding(vertical = 9.dp, horizontal = 14.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "✨ تمت برمجة هذا التطبيق بواسطة Amjad omega ✨",
+            style = MaterialTheme.typography.titleSmall,
+            color = AmberWarn,
+            fontWeight = FontWeight.ExtraBold,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun FooterDeveloperCredit() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(CardSurface)
+            .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = "تمت برمجة هذا التطبيق بواسطة Amjad omega",
+            style = MaterialTheme.typography.titleSmall,
+            color = EmeraldBright,
+            fontWeight = FontWeight.ExtraBold,
+        )
+        Text(
+            text = "حارس الشبكة — كاشف المتصلين والكاميرات وقاطع الاتصال الفوري",
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSilver,
+        )
     }
 }
 
@@ -196,7 +265,7 @@ private fun TopHeaderBar(
                     color = TextWhite,
                 )
                 Text(
-                    text = "كاشف المتصلين وفصل الاتصال بضغطة واحدة",
+                    text = "كاشف المتصلين والكاميرات وقاطع الاتصال",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSilver,
                 )
@@ -260,7 +329,7 @@ private fun QuickSettingsCard(
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = "فصل الغرباء تلقائياً عند الفحص",
+                    text = "فصل الغرباء والكاميرات تلقائياً عند الفحص",
                     style = MaterialTheme.typography.titleSmall,
                     color = TextWhite,
                 )
@@ -296,9 +365,9 @@ private fun QuickSettingsCard(
 
         Text(
             text = if (isRootAvailable) {
-                "وضع النظام: روت متاح (فصل مباشر + حظر الراوتر)"
+                "وضع القوة: روت مفعّل (قطع ARP Spoof كامل + إغراق RTSP/TCP + حظر الراوتر)"
             } else {
-                "وضع النظام: بدون روت (إرباك الجلسة المباشر + حظر الراوتر الذكي بضغطة واحدة)"
+                "وضع القوة: هجوم مزدوج نشط (12 خط إغراق RTSP/TCP/UDP + حظر الراوتر الذكي)"
             },
             style = MaterialTheme.typography.labelSmall,
             color = EmeraldBright,
@@ -310,6 +379,7 @@ private fun QuickSettingsCard(
 private fun NetworkRadarCard(
     vm: HarisViewModel,
     connectedCount: Int,
+    camerasCount: Int,
     blockedCount: Int,
     strangersCount: Int,
 ) {
@@ -320,7 +390,7 @@ private fun NetworkRadarCard(
             .clip(RoundedCornerShape(22.dp))
             .background(
                 Brush.verticalGradient(
-                    listOf( Color(0xFF0E2238), CardSurface )
+                    listOf(Color(0xFF0E2238), CardSurface)
                 )
             )
             .border(1.dp, Emerald.copy(alpha = 0.35f), RoundedCornerShape(22.dp))
@@ -372,10 +442,10 @@ private fun NetworkRadarCard(
             }
         }
 
-        // إحصائيات سريعة بثلاث بطاقات واضحة
+        // ٤ إحصائيات واضحة تشمل الكاميرات
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             StatBadgeBox(
                 modifier = Modifier.weight(1f),
@@ -383,6 +453,13 @@ private fun NetworkRadarCard(
                 value = connectedCount.toString(),
                 accent = EmeraldBright,
                 bg = EmeraldDim.copy(alpha = 0.45f),
+            )
+            StatBadgeBox(
+                modifier = Modifier.weight(1f),
+                title = "📷 كاميرات",
+                value = camerasCount.toString(),
+                accent = CyberSky,
+                bg = Color(0xFF0C2D48),
             )
             StatBadgeBox(
                 modifier = Modifier.weight(1f),
@@ -425,25 +502,46 @@ private fun NetworkRadarCard(
             )
         }
 
-        // زر الفحص الكبير الواضح
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(
-                    if (vm.isScanning) CardElevated else Emerald
-                )
-                .clickable(enabled = !vm.isScanning) { vm.startScan() }
-                .padding(vertical = 13.dp),
-            contentAlignment = Alignment.Center,
+        // زران للفحص: فحص شامل + فحص عميق للكاميرات
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                text = if (vm.isScanning) "جاري فحص الشبكة... (${(vm.scanProgress * 100).toInt()}%)"
-                else "🔍  فحص الشبكة الآن واكتشاف المتصلين",
-                style = MaterialTheme.typography.titleMedium,
-                color = if (vm.isScanning) TextSilver else Color(0xFF032219),
-                fontWeight = FontWeight.ExtraBold,
-            )
+            Box(
+                modifier = Modifier
+                    .weight(1.2f)
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(if (vm.isScanning) CardElevated else Emerald)
+                    .clickable(enabled = !vm.isScanning) { vm.startScan(deepCameraScan = false) }
+                    .padding(vertical = 12.dp, horizontal = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = if (vm.isScanning) "جاري الفحص (${(vm.scanProgress * 100).toInt()}%)"
+                    else "🔍 فحص الشبكة الآن",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (vm.isScanning) TextSilver else Color(0xFF032219),
+                    fontWeight = FontWeight.ExtraBold,
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(if (vm.isScanning) CardElevated else Color(0xFF0C2D48))
+                    .border(1.dp, CyberSky.copy(alpha = 0.6f), RoundedCornerShape(15.dp))
+                    .clickable(enabled = !vm.isScanning) { vm.startDeepCameraScan() }
+                    .padding(vertical = 12.dp, horizontal = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "📷 كشف الكاميرات",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = CyberSky,
+                    fontWeight = FontWeight.ExtraBold,
+                )
+            }
         }
     }
 }
@@ -461,12 +559,12 @@ private fun StatBadgeBox(
             .clip(RoundedCornerShape(14.dp))
             .background(bg)
             .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
-            .padding(vertical = 10.dp, horizontal = 8.dp),
+            .padding(vertical = 9.dp, horizontal = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = value,
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.titleLarge,
             color = accent,
             fontWeight = FontWeight.ExtraBold,
         )
@@ -474,56 +572,81 @@ private fun StatBadgeBox(
             text = title,
             style = MaterialTheme.typography.labelSmall,
             color = TextWhite,
+            maxLines = 1,
         )
     }
 }
 
 @Composable
-private fun BatchActionsRow(
+private fun BatchActionsSection(
+    activeCamerasCount: Int,
     strangersActiveCount: Int,
     blockedCount: Int,
+    onCutAllCameras: () -> Unit,
     onCutAllStrangers: () -> Unit,
     onReconnectAll: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        if (strangersActiveCount > 0) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (activeCamerasCount > 0) {
             Box(
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
-                    .background(CoralRed.copy(alpha = 0.18f))
-                    .border(1.dp, CoralRed.copy(alpha = 0.65f), RoundedCornerShape(14.dp))
-                    .clickable { onCutAllStrangers() }
-                    .padding(vertical = 11.dp, horizontal = 10.dp),
+                    .background(Color(0xFF3B0A26))
+                    .border(1.2.dp, CoralBright, RoundedCornerShape(14.dp))
+                    .clickable { onCutAllCameras() }
+                    .padding(vertical = 11.dp, horizontal = 12.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "✂️ فصل كل الغرباء بضغطة ($strangersActiveCount)",
+                    text = "📷✂️  فصل وإيقاف بث كل الكاميرات بضغطة واحدة ($activeCamerasCount)",
                     style = MaterialTheme.typography.labelLarge,
                     color = CoralBright,
+                    fontWeight = FontWeight.ExtraBold,
                 )
             }
         }
 
-        if (blockedCount > 0) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Emerald.copy(alpha = 0.16f))
-                    .border(1.dp, Emerald.copy(alpha = 0.55f), RoundedCornerShape(14.dp))
-                    .clickable { onReconnectAll() }
-                    .padding(vertical = 11.dp, horizontal = 10.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "↺ إعادة الاتصال للجميع ($blockedCount)",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = EmeraldBright,
-                )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (strangersActiveCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(CoralRed.copy(alpha = 0.18f))
+                        .border(1.dp, CoralRed.copy(alpha = 0.65f), RoundedCornerShape(14.dp))
+                        .clickable { onCutAllStrangers() }
+                        .padding(vertical = 11.dp, horizontal = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "✂️ فصل كل الغرباء ($strangersActiveCount)",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = CoralBright,
+                    )
+                }
+            }
+
+            if (blockedCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Emerald.copy(alpha = 0.16f))
+                        .border(1.dp, Emerald.copy(alpha = 0.55f), RoundedCornerShape(14.dp))
+                        .clickable { onReconnectAll() }
+                        .padding(vertical = 11.dp, horizontal = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "↺ إعادة الاتصال للجميع ($blockedCount)",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = EmeraldBright,
+                    )
+                }
             }
         }
     }
@@ -533,6 +656,7 @@ private fun BatchActionsRow(
 private fun FilterAndSearchSection(
     selectedTab: FilterTab,
     totalCount: Int,
+    camerasCount: Int,
     connectedCount: Int,
     blockedCount: Int,
     strangersCount: Int,
@@ -548,6 +672,7 @@ private fun FilterAndSearchSection(
             items(FilterTab.entries) { tab ->
                 val count = when (tab) {
                     FilterTab.ALL -> totalCount
+                    FilterTab.CAMERAS -> camerasCount
                     FilterTab.CONNECTED -> connectedCount
                     FilterTab.BLOCKED -> blockedCount
                     FilterTab.STRANGERS -> strangersCount
@@ -563,7 +688,7 @@ private fun FilterAndSearchSection(
                             RoundedCornerShape(12.dp)
                         )
                         .clickable { onSelectTab(tab) }
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                        .padding(horizontal = 13.dp, vertical = 8.dp),
                 ) {
                     Text(
                         text = "${tab.labelAr} ($count)",
@@ -582,7 +707,7 @@ private fun FilterAndSearchSection(
             singleLine = true,
             placeholder = {
                 Text(
-                    "ابحث باسم الجهاز أو الـ IP أو الماركة...",
+                    "ابحث باسم الجهاز أو الكاميرا أو الـ IP أو الماركة...",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextDim,
                 )
@@ -603,19 +728,22 @@ private fun FilterAndSearchSection(
 @Composable
 private fun DeviceItemCard(
     device: ConnectedDevice,
+    cutPacketsSent: Long,
     onInstantCutToggle: () -> Unit,
     onOpenOptions: () -> Unit,
     onOpenRouterBlock: () -> Unit,
 ) {
     val borderColor = when {
-        device.isBlocked -> CoralRed.copy(alpha = 0.75f)
+        device.isBlocked -> CoralRed.copy(alpha = 0.85f)
+        device.isCamera -> CyberSky.copy(alpha = 0.75f)
         device.isGateway || device.isSelf -> CyberSky.copy(alpha = 0.45f)
         device.isStranger -> AmberWarn.copy(alpha = 0.45f)
         else -> Emerald.copy(alpha = 0.40f)
     }
 
     val containerBg = when {
-        device.isBlocked -> Color(0xFF1F0D18)
+        device.isBlocked -> Color(0xFF210B16)
+        device.isCamera -> Color(0xFF0D2036)
         else -> CardSurface
     }
 
@@ -624,7 +752,7 @@ private fun DeviceItemCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(containerBg)
-            .border(1.2.dp, borderColor, RoundedCornerShape(20.dp))
+            .border(1.3.dp, borderColor, RoundedCornerShape(20.dp))
             .clickable { onOpenOptions() }
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -675,53 +803,88 @@ private fun DeviceItemCard(
             StatusPillBadge(device = device)
         }
 
-        // السطر الثاني: تفاصيل IP و MAC والسرعة
-        Row(
+        // السطر الثاني: تفاصيل IP و MAC والسرعة والمنافذ
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .background(DeepNavy)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(
-                text = "IP: ${device.ip}",
-                style = MaterialTheme.typography.labelMedium,
-                color = CyberSky,
-            )
-            Text(
-                text = "MAC: ${device.mac}",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextSilver,
-            )
-            Text(
-                text = if (device.isBlocked) "0 KB/s" else "${device.pingMs}ms ⚡",
-                style = MaterialTheme.typography.labelSmall,
-                color = if (device.isBlocked) CoralBright else EmeraldBright,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "IP: ${device.ip}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = CyberSky,
+                )
+                Text(
+                    text = "MAC: ${device.mac}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextSilver,
+                )
+                Text(
+                    text = if (device.isBlocked) "مقطوع ⛔" else "${device.pingMs}ms ⚡",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (device.isBlocked) CoralBright else EmeraldBright,
+                )
+            }
+
+            if (device.isCamera || device.openPorts.isNotEmpty()) {
+                val portsText = if (device.openPorts.isNotEmpty()) {
+                    device.openPorts.joinToString(", ")
+                } else "554, 8000"
+                Text(
+                    text = if (device.isCamera) {
+                        "📷 كاميرا مكتشفة (${device.cameraProtocol.ifBlank { "RTSP/ONVIF" }}) · المنافذ: $portsText"
+                    } else {
+                        "المنافذ النشطة: $portsText"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (device.isCamera) CyberSky else TextSilver,
+                )
+            }
         }
 
-        // إذا كان الجهاز مفصولاً نعرض سبب/حالة الفصل بوضوح
-        if (device.isBlocked && device.blockMethodAr.isNotBlank()) {
-            Text(
-                text = "الحالة: ${device.blockMethodAr} — لا يمكنه استخدام الشبكة حالياً",
-                style = MaterialTheme.typography.bodySmall,
-                color = CoralBright,
-            )
+        // إذا كان الجهاز مفصولاً نعرض عداد حزم القطع الحي + زر القفل النهائي من الراوتر
+        if (device.isBlocked) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(CoralDim.copy(alpha = 0.55f))
+                    .border(1.dp, CoralRed.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                    .padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = "🔥 ${device.blockMethodAr.ifBlank { "هجوم القطع نشط الآن" }}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = CoralBright,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "حزم القطع وإغراق الجلسة المرسلة: $cutPacketsSent حزمة  ·  للقفل النهائي ١٠٠٪ من الراوتر اضغط «قفل راوتر» أدناه",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextWhite,
+                )
+            }
         }
 
-        // السطر الثالث: أزرار التحكم المباشر السهلة جداً
+        // السطر الثالث: أزرار التحكم المباشر
         if (device.canDisconnect) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // زر الفصل / الإعادة الفوري بضغطة واحدة
                 Box(
                     modifier = Modifier
-                        .weight(1.6f)
+                        .weight(1.5f)
                         .clip(RoundedCornerShape(14.dp))
                         .background(
                             if (device.isBlocked) Emerald else CoralRed
@@ -731,38 +894,41 @@ private fun DeviceItemCard(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = if (device.isBlocked) "↺  إعادة الاتصال الآن" else "✂️  فصل الاتصال فوراً",
+                        text = when {
+                            device.isBlocked -> "↺  إعادة الاتصال الآن"
+                            device.isCamera -> "✂️  قطع بث الكاميرا فوراً"
+                            else -> "✂️  فصل الاتصال فوراً"
+                        },
                         style = MaterialTheme.typography.labelLarge,
                         color = if (device.isBlocked) Color(0xFF032219) else TextWhite,
                         fontWeight = FontWeight.ExtraBold,
                     )
                 }
 
-                // زر الحظر من الراوتر بضغطة واحدة
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(14.dp))
-                        .background(CardElevated)
-                        .border(1.dp, BorderSubtle, RoundedCornerShape(14.dp))
+                        .background(AmberDim)
+                        .border(1.dp, AmberWarn.copy(alpha = 0.7f), RoundedCornerShape(14.dp))
                         .clickable { onOpenRouterBlock() }
                         .padding(horizontal = 11.dp, vertical = 11.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "حظر راوتر",
+                        text = "🔒 قفل راوتر",
                         style = MaterialTheme.typography.labelMedium,
                         color = AmberWarn,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
 
-                // زر التسمية والخيارات
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(14.dp))
                         .background(CardElevated)
                         .border(1.dp, BorderSubtle, RoundedCornerShape(14.dp))
                         .clickable { onOpenOptions() }
-                        .padding(horizontal = 11.dp, vertical = 11.dp),
+                        .padding(horizontal = 10.dp, vertical = 11.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
@@ -780,6 +946,7 @@ private fun DeviceItemCard(
 private fun StatusPillBadge(device: ConnectedDevice) {
     val (label, fg, bg) = when {
         device.isBlocked -> Triple("مفصول ⛔", CoralBright, CoralDim)
+        device.isCamera -> Triple("كاميرا 📷", CyberSky, Color(0xFF0C2D48))
         device.isGateway -> Triple("الراوتر 📡", CyberSky, Color(0xFF0C2D48))
         device.isSelf -> Triple("هاتفك 🛡️", EmeraldBright, EmeraldDim)
         device.isTrusted -> Triple("موثوق ✓", EmeraldBright, EmeraldDim)
@@ -806,6 +973,7 @@ private fun StatusPillBadge(device: ConnectedDevice) {
 private fun EmptyDevicesBox(
     selectedTab: FilterTab,
     onScanAgain: () -> Unit,
+    onDeepCamScan: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -819,21 +987,34 @@ private fun EmptyDevicesBox(
     ) {
         Text(
             text = when (selectedTab) {
+                FilterTab.CAMERAS -> "لم تظهر كاميرات في الفحص السريع — اضغط «فحص عميق للكاميرات»"
                 FilterTab.BLOCKED -> "لا توجد أجهزة مفصولة حالياً"
                 FilterTab.STRANGERS -> "ممتاز! لا توجد أجهزة غريبة على شبكتك"
                 else -> "لم يتم العثور على أجهزة مطابقة"
             },
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleSmall,
             color = TextWhite,
+            textAlign = TextAlign.Center,
         )
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(CardElevated)
-                .clickable { onScanAgain() }
-                .padding(horizontal = 16.dp, vertical = 9.dp),
-        ) {
-            Text("إعادة فحص الشبكة", color = EmeraldBright, style = MaterialTheme.typography.labelMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Emerald)
+                    .clickable { onDeepCamScan() }
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
+            ) {
+                Text("📷 فحص عميق للكاميرات", color = Color(0xFF032219), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(CardElevated)
+                    .clickable { onScanAgain() }
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
+            ) {
+                Text("إعادة فحص الشبكة", color = EmeraldBright, style = MaterialTheme.typography.labelMedium)
+            }
         }
     }
 }

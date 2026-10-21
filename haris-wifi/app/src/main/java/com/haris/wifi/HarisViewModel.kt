@@ -10,6 +10,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
@@ -46,7 +47,7 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
     var scanProgress by mutableFloatStateOf(0f)
         private set
 
-    var scanStatusText by mutableStateOf("جاهز لفحص الشبكة")
+    var scanStatusText by mutableStateOf("جاهز لفحص الشبكة والكاميرات")
         private set
 
     var selectedTab by mutableStateOf(FilterTab.ALL)
@@ -73,18 +74,32 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
     var autoCutStrangers by mutableStateOf(store.autoCutStrangers)
         private set
 
+    var liveCutTick by mutableLongStateOf(0L)
+        private set
+
     init {
-        startScan()
-        startExpirationWatcher()
+        startScan(deepCameraScan = false)
+        startExpirationAndLiveTicker()
     }
 
-    /** بدء فحص الشبكة واكتشاف جميع المتصلين */
-    fun startScan() {
+    fun getCutPacketsFor(device: ConnectedDevice): Long {
+        // قراءة liveCutTick لتحديث الواجهة لحظياً أثناء الهجوم
+        @Suppress("UNUSED_EXPRESSION")
+        liveCutTick
+        return cutter.getCutPacketsCount(device.uniqueKey)
+    }
+
+    /** بدء فحص الشبكة واكتشاف جميع المتصلين والكاميرات */
+    fun startScan(deepCameraScan: Boolean = false) {
         if (isScanning) return
         viewModelScope.launch {
             isScanning = true
             scanProgress = 0.02f
-            scanStatusText = "جاري قراءة بيانات الراوتر والواي فاي..."
+            scanStatusText = if (deepCameraScan) {
+                "بدء الفحص العميق لكاميرات المراقبة (ONVIF / RTSP / Hikvision / Dahua)..."
+            } else {
+                "جاري قراءة بيانات الراوتر والواي فاي وكشف الكاميرات..."
+            }
             hapticTap()
 
             val hasRoot = cutter.checkRootAvailable()
@@ -95,13 +110,13 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
             val found = scanner.scanSubnet(
                 netInfo = info,
                 savedMeta = savedMeta,
+                deepCameraScan = deepCameraScan,
                 onProgress = { progress, text ->
                     scanProgress = progress
                     scanStatusText = text
                 }
             )
 
-            // إذا كان خيار الفصل التلقائي للغرباء مفعّلاً، نفصل أي جهاز غريب غير موثوق تلقائياً
             val processed = if (autoCutStrangers) {
                 found.map { dev ->
                     if (dev.isStranger && !dev.isBlocked) {
@@ -116,7 +131,7 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
                         if (dev.isBlocked) {
                             cutter.startCut(dev, info.gatewayIp, info.isRootAvailable)
                         }
-                        dev
+                        cutDevOrOriginal(dev)
                     }
                 }
             } else {
@@ -130,14 +145,25 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
             devices = scanner.sortDevices(processed)
             isScanning = false
             scanProgress = 1f
+
             val connectedCount = devices.count { !it.isBlocked }
             val blockedCount = devices.count { it.isBlocked }
-            scanStatusText = if (blockedCount > 0) {
-                "متصل الآن: $connectedCount أجهزة · مفصول: $blockedCount"
-            } else {
-                "متصل بالشبكة الآن: $connectedCount أجهزة"
+            val camerasCount = devices.count { it.isCamera }
+
+            if (deepCameraScan && camerasCount > 0) {
+                selectedTab = FilterTab.CAMERAS
+                showBanner("تم اكتشاف $camerasCount كاميرات مراقبة على الشبكة 📷")
             }
+
+            scanStatusText = "متصل: $connectedCount · كاميرات: $camerasCount · مفصول: $blockedCount"
         }
+    }
+
+    private fun cutDevOrOriginal(dev: ConnectedDevice): ConnectedDevice = dev
+
+    /** فحص مخصص للكاميرات بضغطة واحدة */
+    fun startDeepCameraScan() {
+        startScan(deepCameraScan = true)
     }
 
     /** زر الفصل السريع بضغطة واحدة من البطاقة مباشرة */
@@ -154,7 +180,7 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** فصل الجهاز بالوضع المحدد (فوري، ١٥ دقيقة، ساعة، أو حظر من الراوتر) */
+    /** فصل الجهاز بالوضع المحدد */
     fun cutDevice(device: ConnectedDevice, mode: DisconnectMode) {
         if (!device.canDisconnect) return
         hapticTap()
@@ -163,11 +189,14 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
             System.currentTimeMillis() + it * 60_000L
         }
         val methodLabel = when (mode) {
-            DisconnectMode.INSTANT_OPEN ->
-                if (networkInfo.isRootAvailable) "مفصول نهائياً (وضع الروت)" else "مفصول فوراً ⛔"
+            DisconnectMode.INSTANT_OPEN -> when {
+                networkInfo.isRootAvailable -> "قطع كامل بالروت (ARP + iptables)"
+                device.isCamera -> "إغراق بث الكاميرا نشط (12 خط RTSP/ONVIF)"
+                else -> "هجوم قطع الجلسات نشط (8 خطوط TCP/UDP)"
+            }
             DisconnectMode.PAUSE_15M -> "مفصول مؤقتاً (١٥ دقيقة)"
             DisconnectMode.PAUSE_1H -> "مفصول مؤقتاً (ساعة واحدة)"
-            DisconnectMode.ROUTER_PERMANENT -> "مفصول + حظر من الراوتر"
+            DisconnectMode.ROUTER_PERMANENT -> "قطع مزدوج + حظر من الراوتر"
         }
 
         val updated = device.copy(
@@ -185,10 +214,13 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
             selectedDeviceForSheet = null
             routerBlockerDevice = updated
             showRouterScreen = true
-            showBanner("تم نسخ الماك (${updated.mac}) وفتح لوحة حظر الراوتر")
+            showBanner("تم نسخ الماك (${updated.mac}) وفتح الحظر الأوتوماتيكي للراوتر")
         } else {
             selectedDeviceForSheet = null
-            showBanner("تم فصل الاتصال عن «${updated.displayName}» بنجاح ✂️")
+            val extraHint = if (!networkInfo.isRootAvailable && !device.isCamera) {
+                " · للحظر النهائي ١٠٠٪ اضغط «حظر راوتر»"
+            } else ""
+            showBanner("بدأ قطع الاتصال عن «${updated.displayName}» ✂️$extraHint")
         }
     }
 
@@ -205,6 +237,32 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
         cutter.stopCut(updated, networkInfo.gatewayIp, networkInfo.isRootAvailable)
         selectedDeviceForSheet = null
         showBanner("تمت إعادة الاتصال لـ «${updated.displayName}» ✓")
+    }
+
+    /** فصل كل الكاميرات المتصلة بضغطة واحدة */
+    fun cutAllCameras() {
+        val activeCameras = devices.filter { it.isCamera && !it.isBlocked && it.canDisconnect }
+        if (activeCameras.isEmpty()) {
+            showBanner("لا توجد كاميرات متصلة غير مفصولة حالياً")
+            return
+        }
+        hapticTap()
+        val updatedList = devices.map { dev ->
+            if (dev.isCamera && !dev.isBlocked && dev.canDisconnect) {
+                val cut = dev.copy(
+                    isBlocked = true,
+                    blockedUntilMillis = null,
+                    blockMethodAr = "إغراق وإيقاف بث الكاميرا (12 خط RTSP/ONVIF) ⛔",
+                )
+                persistDeviceState(cut)
+                cutter.startCut(cut, networkInfo.gatewayIp, networkInfo.isRootAvailable)
+                cut
+            } else {
+                dev
+            }
+        }
+        devices = scanner.sortDevices(updatedList)
+        showBanner("تم قطع البث والاتصال عن ${activeCameras.size} كاميرات مراقبة 📷✂️")
     }
 
     /** فصل كل الأجهزة الغريبة (غير الموثوقة) بضغطة واحدة */
@@ -241,7 +299,7 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
         cutter.stopAll(
             gatewayIp = networkInfo.gatewayIp,
             isRootAvailable = networkInfo.isRootAvailable,
-            ips = blocked.map { it.ip }
+            devices = blocked,
         )
         val updatedList = devices.map { dev ->
             if (dev.isBlocked) {
@@ -260,7 +318,7 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
         showBanner("تمت إعادة الاتصال لجميع الأجهزة (${blocked.size}) ✓")
     }
 
-    /** تسمية الجهاز وتحديد نوعه وثقته (من العائلة أو غريب) */
+    /** تسمية الجهاز وتحديد نوعه وثقته */
     fun saveDeviceDetails(
         device: ConnectedDevice,
         customName: String,
@@ -279,11 +337,14 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
         showBanner("تم حفظ بيانات «${updated.displayName}»")
     }
 
-    /** فتح شاشة حظر الراوتر المدمجة لجهاز معين أو بشكل عام */
     fun openRouterBlocker(device: ConnectedDevice?) {
         hapticTap()
         if (device != null) {
             copyToClipboard("MAC", device.mac)
+            if (!device.isBlocked && device.canDisconnect) {
+                cutDevice(device, DisconnectMode.ROUTER_PERMANENT)
+                return
+            }
         }
         selectedDeviceForSheet = null
         routerBlockerDevice = device
@@ -338,6 +399,7 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
     fun filteredDevices(): List<ConnectedDevice> {
         val byTab = when (selectedTab) {
             FilterTab.ALL -> devices
+            FilterTab.CAMERAS -> devices.filter { it.isCamera }
             FilterTab.CONNECTED -> devices.filter { !it.isBlocked }
             FilterTab.BLOCKED -> devices.filter { it.isBlocked }
             FilterTab.STRANGERS -> devices.filter { it.isStranger }
@@ -355,7 +417,7 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
     fun showBanner(msg: String) {
         bannerMessage = msg
         viewModelScope.launch {
-            delay(3400L)
+            delay(3600L)
             if (bannerMessage == msg) {
                 bannerMessage = null
             }
@@ -391,10 +453,13 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
-    private fun startExpirationWatcher() {
+    private fun startExpirationAndLiveTicker() {
         viewModelScope.launch {
             while (true) {
-                delay(15_000L)
+                delay(1000L)
+                if (devices.any { it.isBlocked }) {
+                    liveCutTick++
+                }
                 val now = System.currentTimeMillis()
                 val expired = devices.filter { dev ->
                     val until = dev.blockedUntilMillis

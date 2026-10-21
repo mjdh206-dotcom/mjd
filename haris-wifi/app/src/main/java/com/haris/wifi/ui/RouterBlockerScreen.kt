@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
@@ -70,7 +69,7 @@ fun RouterBlockerScreen(
     val routerUrl = "http://$gatewayIp"
 
     var selectedGuide by remember { mutableStateOf(vm.currentRouterGuide()) }
-    var showGuideSteps by remember { mutableStateOf(true) }
+    var showGuideSteps by remember { mutableStateOf(false) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
 
     Column(
@@ -78,7 +77,7 @@ fun RouterBlockerScreen(
             .fillMaxSize()
             .background(Obsidian)
             .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // ١. الشريط العلوي
         Row(
@@ -100,14 +99,14 @@ fun RouterBlockerScreen(
                 Spacer(Modifier.width(10.dp))
                 Column {
                     Text(
-                        text = "لوحة حظر الراوتر الذكية",
+                        text = "قفل وحظر الجهاز من الراوتر (١٠٠٪)",
                         style = MaterialTheme.typography.titleMedium,
                         color = TextWhite,
                     )
                     Text(
-                        text = "بوابة الراوتر: $routerUrl",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = CyberSky,
+                        text = "تمت برمجة هذا التطبيق بواسطة Amjad omega",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = AmberWarn,
                     )
                 }
             }
@@ -128,7 +127,7 @@ fun RouterBlockerScreen(
             }
         }
 
-        // ٢. بطاقة الجهاز المراد حظره + أزرار التعبئة التلقائية بضغطة واحدة
+        // ٢. بطاقة التحكم الأوتوماتيكي بالراوتر
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -146,7 +145,7 @@ fun RouterBlockerScreen(
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            text = "الجهاز المستهدف بالحظر: ${targetDevice.displayName}",
+                            text = "الجهاز المراد قطعه: ${targetDevice.displayName}",
                             style = MaterialTheme.typography.titleSmall,
                             color = CoralBright,
                             fontWeight = FontWeight.Bold,
@@ -169,7 +168,7 @@ fun RouterBlockerScreen(
                 }
             }
 
-            // أزرار المساعد الذكي داخل صفحة الراوتر
+            // أزرار المساعد الأوتوماتيكي
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -185,26 +184,40 @@ fun RouterBlockerScreen(
                             val js = """
                                 (function() {
                                     var inputs = document.querySelectorAll('input');
+                                    var passFilled = false;
                                     for (var i = 0; i < inputs.length; i++) {
                                         var t = (inputs[i].type || '').toLowerCase();
                                         var n = (inputs[i].name || inputs[i].id || '').toLowerCase();
                                         if (t === 'text' || n.indexOf('user') !== -1 || n.indexOf('name') !== -1) {
-                                            if (!inputs[i].value) inputs[i].value = '$user';
+                                            if (!inputs[i].value) {
+                                                inputs[i].value = '$user';
+                                                inputs[i].dispatchEvent(new Event('input', {bubbles:true}));
+                                            }
                                         }
                                         if (t === 'password' || n.indexOf('pass') !== -1 || n.indexOf('pwd') !== -1) {
                                             inputs[i].value = '$pass';
+                                            inputs[i].dispatchEvent(new Event('input', {bubbles:true}));
+                                            passFilled = true;
+                                        }
+                                    }
+                                    var btns = document.querySelectorAll('button, input[type="submit"], input[type="button"], a.button');
+                                    for (var j = 0; j < btns.length; j++) {
+                                        var txt = (btns[j].innerText || btns[j].value || '').toLowerCase();
+                                        if (txt.indexOf('login') !== -1 || txt.indexOf('log in') !== -1 || txt.indexOf('دخول') !== -1) {
+                                            btns[j].click();
+                                            break;
                                         }
                                     }
                                 })();
                             """.trimIndent()
                             webViewRef?.evaluateJavascript(js, null)
-                            vm.showBanner("تمت تعبئة بيانات الدخول ($user / $pass) تلقائياً")
+                            vm.showBanner("تمت تعبئة الدخول ($user / $pass) والضغط على دخول تلقائياً!")
                         }
                         .padding(vertical = 10.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "🔑 تعبئة الدخول تلقائياً",
+                        text = "🔑 دخول تلقائي للراوتر",
                         style = MaterialTheme.typography.labelMedium,
                         color = Color(0xFF032219),
                         fontWeight = FontWeight.Bold,
@@ -214,36 +227,60 @@ fun RouterBlockerScreen(
                 if (targetDevice != null) {
                     Box(
                         modifier = Modifier
-                            .weight(1f)
+                            .weight(1.15f)
                             .clip(RoundedCornerShape(12.dp))
                             .background(CoralRed)
                             .clickable {
                                 val mac = targetDevice.mac
+                                val ip = targetDevice.ip
                                 vm.copyToClipboard("MAC", mac)
                                 val js = """
                                     (function() {
+                                        var mac = '$mac';
+                                        var ip = '$ip';
+                                        // ١. البحث عن سطر الجهاز في جدول الأجهزة المتصلة وإيقاف مفتاح الإنترنت أمامه
+                                        var rows = document.querySelectorAll('tr, div.device-item, li');
+                                        for (var r = 0; r < rows.length; r++) {
+                                            var html = (rows[r].innerText || '').toUpperCase();
+                                            if (html.indexOf(mac.toUpperCase()) !== -1 || html.indexOf(ip) !== -1) {
+                                                var toggles = rows[r].querySelectorAll('input[type="checkbox"], .switch, button, a');
+                                                for (var k = 0; k < toggles.length; k++) {
+                                                    toggles[k].click();
+                                                }
+                                            }
+                                        }
+                                        // ٢. لصق الماك في أي حقل حظر (MAC Filter / Blacklist)
                                         var active = document.activeElement;
                                         if (active && active.tagName === 'INPUT') {
-                                            active.value = '$mac';
-                                            return;
+                                            active.value = mac;
+                                            active.dispatchEvent(new Event('input', {bubbles:true}));
                                         }
                                         var inputs = document.querySelectorAll('input[type="text"], input:not([type])');
                                         for (var i = 0; i < inputs.length; i++) {
-                                            var id = (inputs[i].id || inputs[i].name || '').toLowerCase();
+                                            var id = (inputs[i].id || inputs[i].name || inputs[i].placeholder || '').toLowerCase();
                                             if (id.indexOf('mac') !== -1 || id.indexOf('filter') !== -1 || i === inputs.length - 1) {
-                                                inputs[i].value = '$mac';
+                                                inputs[i].value = mac;
+                                                inputs[i].dispatchEvent(new Event('input', {bubbles:true}));
+                                            }
+                                        }
+                                        // ٣. الضغط على زر حفظ / حظر (Save / Apply / Block)
+                                        var btns = document.querySelectorAll('button, input[type="button"], input[type="submit"]');
+                                        for (var b = 0; b < btns.length; b++) {
+                                            var t = (btns[b].innerText || btns[b].value || '').toLowerCase();
+                                            if (t.indexOf('block') !== -1 || t.indexOf('save') !== -1 || t.indexOf('apply') !== -1 || t.indexOf('حظر') !== -1 || t.indexOf('حفظ') !== -1) {
+                                                btns[b].click();
                                             }
                                         }
                                     })();
                                 """.trimIndent()
                                 webViewRef?.evaluateJavascript(js, null)
-                                vm.showBanner("تم لصق عنوان الماك ($mac) في الحقل مباشرة!")
+                                vm.showBanner("تم تنفيذ الحظر الأوتوماتيكي ولصق الماك ($mac)!")
                             }
                             .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = "📌 لصق الماك في الصفحة",
+                            text = "⚡ حظر أوتوماتيكي للجهاز",
                             style = MaterialTheme.typography.labelMedium,
                             color = TextWhite,
                             fontWeight = FontWeight.Bold,
@@ -262,12 +299,12 @@ fun RouterBlockerScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "💡 خطوات الحظر السريعة (${selectedGuide.nameAr})",
+                    text = "💡 تعليمات الراوتر (${selectedGuide.nameAr})",
                     style = MaterialTheme.typography.labelSmall,
                     color = AmberWarn,
                 )
                 Text(
-                    text = if (showGuideSteps) "إخفاء ▲" else "عرض الخطوات ▼",
+                    text = if (showGuideSteps) "إخفاء ▲" else "عرض الشرح ▼",
                     style = MaterialTheme.typography.labelSmall,
                     color = TextSilver,
                 )

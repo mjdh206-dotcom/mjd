@@ -7,11 +7,11 @@ enum class DeviceType(
 ) {
     ROUTER("router", "الراوتر الأساسي", "📡"),
     THIS_PHONE("self", "جهازك الحالي", "🛡️"),
+    CAMERA("camera", "كاميرا مراقبة", "📷"),
     PHONE("phone", "هاتف ذكي", "📱"),
     LAPTOP("laptop", "كمبيوتر / لابتوب", "💻"),
     TV("tv", "تلفزيون ذكي", "📺"),
     CONSOLE("console", "جهاز ألعاب", "🎮"),
-    CAMERA("camera", "كاميرا / جهاز ذكي", "📷"),
     UNKNOWN("unknown", "جهاز غير معروف", "❓");
 
     companion object {
@@ -28,8 +28,8 @@ enum class DisconnectMode(
 ) {
     INSTANT_OPEN(
         id = "instant",
-        titleAr = "فصل فوري مستمر",
-        subtitleAr = "قطع الاتصال عن الجهاز فوراً حتى تعيده بنفسك",
+        titleAr = "قطع الاتصال بقوة قصوى (هجوم مزدوج + ARP/RTSP)",
+        subtitleAr = "إغراق منافذ الجهاز/الكاميرا بـ 16 خط متوازٍ + قطع الجلسات فوراً",
         durationMinutes = null,
     ),
     PAUSE_15M(
@@ -46,14 +46,15 @@ enum class DisconnectMode(
     ),
     ROUTER_PERMANENT(
         id = "router_block",
-        titleAr = "حظر نهائي من الراوتر",
-        subtitleAr = "نسخ الماك تلقائياً وفتح لوحة حظر الراوتر بضغطة واحدة",
+        titleAr = "حظر فعلي نهائي من الراوتر (مضمون ١٠٠٪ بدون روت)",
+        subtitleAr = "فتح الراوتر وتعبئة الدخول وحظر عنوان MAC الخاص بالجهاز تلقائياً",
         durationMinutes = null,
     ),
 }
 
 enum class FilterTab(val labelAr: String) {
     ALL("الكل"),
+    CAMERAS("📷 الكاميرات"),
     CONNECTED("متصل الآن"),
     BLOCKED("مفصول ⛔"),
     STRANGERS("غرباء ⚠️"),
@@ -91,6 +92,7 @@ data class ConnectedDevice(
     val isGateway: Boolean = false,
     val isSelf: Boolean = false,
     val signalQuality: Int = 85,
+    val cameraProtocol: String = "",
 ) {
     val displayName: String
         get() = customName.trim().ifEmpty { defaultNameAr }
@@ -100,6 +102,9 @@ data class ConnectedDevice(
 
     val canDisconnect: Boolean
         get() = !isGateway && !isSelf
+
+    val isCamera: Boolean
+        get() = deviceType == DeviceType.CAMERA || cameraProtocol.isNotBlank()
 
     val isStranger: Boolean
         get() = !isGateway && !isSelf && !isTrusted
