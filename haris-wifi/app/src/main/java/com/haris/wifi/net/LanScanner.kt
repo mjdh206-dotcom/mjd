@@ -504,10 +504,12 @@ class LanScanner(private val context: Context) {
                 val deadline = System.currentTimeMillis() + 450L
                 while (System.currentTimeMillis() < deadline) {
                     val pkt = DatagramPacket(buf, buf.size)
-                    runCatching {
+                    try {
                         socket.receive(pkt)
                         pkt.address?.hostAddress?.let { foundIps.add(it) }
-                    }.onFailure { break }
+                    } catch (_: Exception) {
+                        break
+                    }
                 }
             }
         }
@@ -529,13 +531,15 @@ class LanScanner(private val context: Context) {
                 val deadline = System.currentTimeMillis() + 320L
                 while (System.currentTimeMillis() < deadline) {
                     val pkt = DatagramPacket(buf, buf.size)
-                    runCatching {
+                    try {
                         socket.receive(pkt)
                         val body = String(pkt.data, 0, pkt.length).lowercase()
                         if (body.contains("camera") || body.contains("ipcam") || body.contains("dvr") || body.contains("onvif")) {
                             pkt.address?.hostAddress?.let { foundIps.add(it) }
                         }
-                    }.onFailure { break }
+                    } catch (_: Exception) {
+                        break
+                    }
                 }
             }
         }
