@@ -47,7 +47,7 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
     var scanProgress by mutableFloatStateOf(0f)
         private set
 
-    var scanStatusText by mutableStateOf("جاهز لفحص الشبكة والكاميرات")
+    var scanStatusText by mutableStateOf("جاهز لفحص المتصلين")
         private set
 
     var selectedTab by mutableStateOf(FilterTab.ALL)
@@ -74,6 +74,13 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
     var autoCutStrangers by mutableStateOf(store.autoCutStrangers)
         private set
 
+    var routerPassword by mutableStateOf(store.routerPassword)
+        private set
+
+    /** الجهاز الذي يتم حظره صامتاً في الخلفية عبر محرك الراوتر المخفي */
+    var silentRouterCutCommand by mutableStateOf<Pair<ConnectedDevice, Long>?>(null)
+        private set
+
     var liveCutTick by mutableLongStateOf(0L)
         private set
 
@@ -82,24 +89,25 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
         startExpirationAndLiveTicker()
     }
 
+    fun updateRouterPassword(newPass: String) {
+        routerPassword = newPass.trim().ifEmpty { "admin" }
+        store.routerPassword = routerPassword
+        showBanner("تم حفظ كلمة سر الراوتر للفصل الأوتوماتيكي")
+    }
+
     fun getCutPacketsFor(device: ConnectedDevice): Long {
-        // قراءة liveCutTick لتحديث الواجهة لحظياً أثناء الهجوم
         @Suppress("UNUSED_EXPRESSION")
         liveCutTick
         return cutter.getCutPacketsCount(device.uniqueKey)
     }
 
-    /** بدء فحص الشبكة واكتشاف جميع المتصلين والكاميرات */
+    /** بدء فحص الشبكة واكتشاف جميع الموبايلات والكاميرات */
     fun startScan(deepCameraScan: Boolean = false) {
         if (isScanning) return
         viewModelScope.launch {
             isScanning = true
-            scanProgress = 0.02f
-            scanStatusText = if (deepCameraScan) {
-                "بدء الفحص العميق لكاميرات المراقبة (ONVIF / RTSP / Hikvision / Dahua)..."
-            } else {
-                "جاري قراءة بيانات الراوتر والواي فاي وكشف الكاميرات..."
-            }
+            scanProgress = 0.04f
+            scanStatusText = "جاري البحث عن الموبايلات والكاميرات المتصلة..."
             hapticTap()
 
             val hasRoot = cutter.checkRootAvailable()
@@ -117,59 +125,43 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
                 }
             )
 
-            val processed = if (autoCutStrangers) {
-                found.map { dev ->
-                    if (dev.isStranger && !dev.isBlocked) {
-                        val cutDev = dev.copy(
-                            isBlocked = true,
-                            blockMethodAr = "فصل تلقائي للغرباء",
-                        )
-                        persistDeviceState(cutDev)
-                        cutter.startCut(cutDev, info.gatewayIp, info.isRootAvailable)
-                        cutDev
-                    } else {
-                        if (dev.isBlocked) {
-                            cutter.startCut(dev, info.gatewayIp, info.isRootAvailable)
-                        }
-                        cutDevOrOriginal(dev)
-                    }
-                }
-            } else {
-                found.onEach { dev ->
-                    if (dev.isBlocked) {
-                        cutter.startCut(dev, info.gatewayIp, info.isRootAvailable)
-                    }
+            found.forEach { dev ->
+                if (dev.isBlocked) {
+                    cutter.startCut(
+                        device = dev,
+                        gatewayIp = info.gatewayIp,
+                        localIp = info.localIp,
+                        routerPassword = routerPassword,
+                        isRootAvailable = info.isRootAvailable,
+                    )
                 }
             }
 
-            devices = scanner.sortDevices(processed)
+            devices = scanner.sortDevices(found)
             isScanning = false
             scanProgress = 1f
 
-            val connectedCount = devices.count { !it.isBlocked }
+            val controllableCount = devices.count { it.canDisconnect }
             val blockedCount = devices.count { it.isBlocked }
-            val camerasCount = devices.count { it.isCamera }
-
-            if (deepCameraScan && camerasCount > 0) {
-                selectedTab = FilterTab.CAMERAS
-                showBanner("تم اكتشاف $camerasCount كاميرات مراقبة على الشبكة 📷")
+            scanStatusText = if (blockedCount > 0) {
+                "الأجهزة المكتشفة: $controllableCount · تم فصل النت عن: $blockedCount"
+            } else {
+                "تم العثور على $controllableCount أجهزة متصلة بالشبكة"
             }
-
-            scanStatusText = "متصل: $connectedCount · كاميرات: $camerasCount · مفصول: $blockedCount"
         }
     }
 
-    private fun cutDevOrOriginal(dev: ConnectedDevice): ConnectedDevice = dev
-
-    /** فحص مخصص للكاميرات بضغطة واحدة */
     fun startDeepCameraScan() {
         startScan(deepCameraScan = true)
     }
 
-    /** زر الفصل السريع بضغطة واحدة من البطاقة مباشرة */
+    /**
+     * كبسة واحدة فقط لفصل أو إعادة الإنترنت بدون روت:
+     * تشغّل إغراق الجلسات + UPnP + الحظر الصامت من الراوتر في الخلفية معاً!
+     */
     fun toggleInstantCut(device: ConnectedDevice) {
         if (!device.canDisconnect) {
-            showBanner("لا يمكن فصل الراوتر الأساسي أو هاتفك الحالي")
+            showBanner("هذا جهاز الراوتر أو موبايلك الشخصي")
             return
         }
         hapticTap()
@@ -180,7 +172,6 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** فصل الجهاز بالوضع المحدد */
     fun cutDevice(device: ConnectedDevice, mode: DisconnectMode) {
         if (!device.canDisconnect) return
         hapticTap()
@@ -188,43 +179,32 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
         val untilMillis = mode.durationMinutes?.let {
             System.currentTimeMillis() + it * 60_000L
         }
-        val methodLabel = when (mode) {
-            DisconnectMode.INSTANT_OPEN -> when {
-                networkInfo.isRootAvailable -> "قطع كامل بالروت (ARP + iptables)"
-                device.isCamera -> "إغراق بث الكاميرا نشط (12 خط RTSP/ONVIF)"
-                else -> "هجوم قطع الجلسات نشط (8 خطوط TCP/UDP)"
-            }
-            DisconnectMode.PAUSE_15M -> "مفصول مؤقتاً (١٥ دقيقة)"
-            DisconnectMode.PAUSE_1H -> "مفصول مؤقتاً (ساعة واحدة)"
-            DisconnectMode.ROUTER_PERMANENT -> "قطع مزدوج + حظر من الراوتر"
-        }
 
         val updated = device.copy(
             isBlocked = true,
             blockedUntilMillis = untilMillis,
-            blockMethodAr = methodLabel,
+            blockMethodAr = "تم قطع الإنترنت عنه ⛔",
         )
 
         updateDeviceInList(updated)
         persistDeviceState(updated)
-        cutter.startCut(updated, networkInfo.gatewayIp, networkInfo.isRootAvailable)
 
-        if (mode == DisconnectMode.ROUTER_PERMANENT) {
-            copyToClipboard("MAC", updated.mac)
-            selectedDeviceForSheet = null
-            routerBlockerDevice = updated
-            showRouterScreen = true
-            showBanner("تم نسخ الماك (${updated.mac}) وفتح الحظر الأوتوماتيكي للراوتر")
-        } else {
-            selectedDeviceForSheet = null
-            val extraHint = if (!networkInfo.isRootAvailable && !device.isCamera) {
-                " · للحظر النهائي ١٠٠٪ اضغط «حظر راوتر»"
-            } else ""
-            showBanner("بدأ قطع الاتصال عن «${updated.displayName}» ✂️$extraHint")
-        }
+        // ١. تشغيل محرك القطع الرباعي (16 خط إغراق + UPnP + Router API + ARP)
+        cutter.startCut(
+            device = updated,
+            gatewayIp = networkInfo.gatewayIp,
+            localIp = networkInfo.localIp,
+            routerPassword = routerPassword,
+            isRootAvailable = networkInfo.isRootAvailable,
+        )
+
+        // ٢. إرسال أمر فوري لمحرك الراوتر الصامت في الخلفية لحظر الماك والـ IP بدون فتح أي شاشة!
+        silentRouterCutCommand = updated to System.currentTimeMillis()
+
+        selectedDeviceForSheet = null
+        showBanner("تم فصل النت عن «${updated.displayName}» ✂️")
     }
 
-    /** إعادة الاتصال لجهاز مفصول */
     fun reconnectDevice(device: ConnectedDevice) {
         hapticTap()
         val updated = device.copy(
@@ -234,70 +214,73 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
         )
         updateDeviceInList(updated)
         persistDeviceState(updated)
-        cutter.stopCut(updated, networkInfo.gatewayIp, networkInfo.isRootAvailable)
+        cutter.stopCut(
+            device = updated,
+            gatewayIp = networkInfo.gatewayIp,
+            routerPassword = routerPassword,
+            isRootAvailable = networkInfo.isRootAvailable,
+        )
         selectedDeviceForSheet = null
-        showBanner("تمت إعادة الاتصال لـ «${updated.displayName}» ✓")
+        showBanner("تمت إعادة النت لـ «${updated.displayName}» ✓")
     }
 
-    /** فصل كل الكاميرات المتصلة بضغطة واحدة */
     fun cutAllCameras() {
         val activeCameras = devices.filter { it.isCamera && !it.isBlocked && it.canDisconnect }
-        if (activeCameras.isEmpty()) {
-            showBanner("لا توجد كاميرات متصلة غير مفصولة حالياً")
-            return
-        }
+        if (activeCameras.isEmpty()) return
         hapticTap()
         val updatedList = devices.map { dev ->
             if (dev.isCamera && !dev.isBlocked && dev.canDisconnect) {
-                val cut = dev.copy(
-                    isBlocked = true,
-                    blockedUntilMillis = null,
-                    blockMethodAr = "إغراق وإيقاف بث الكاميرا (12 خط RTSP/ONVIF) ⛔",
-                )
+                val cut = dev.copy(isBlocked = true, blockMethodAr = "تم قطع الإنترنت عنه ⛔")
                 persistDeviceState(cut)
-                cutter.startCut(cut, networkInfo.gatewayIp, networkInfo.isRootAvailable)
+                cutter.startCut(cut, networkInfo.gatewayIp, networkInfo.localIp, routerPassword, networkInfo.isRootAvailable)
+                silentRouterCutCommand = cut to System.currentTimeMillis()
                 cut
-            } else {
-                dev
-            }
+            } else dev
         }
         devices = scanner.sortDevices(updatedList)
-        showBanner("تم قطع البث والاتصال عن ${activeCameras.size} كاميرات مراقبة 📷✂️")
+        showBanner("تم فصل النت عن جميع الكاميرات (${activeCameras.size}) ✂️")
     }
 
-    /** فصل كل الأجهزة الغريبة (غير الموثوقة) بضغطة واحدة */
+    /** فصل النت عن الجميع بكبسة واحدة */
     fun cutAllStrangers() {
-        val strangers = devices.filter { it.isStranger && !it.isBlocked }
-        if (strangers.isEmpty()) {
-            showBanner("لا توجد أجهزة غريبة متصلة حالياً")
+        val targets = devices.filter { it.canDisconnect && !it.isBlocked }
+        if (targets.isEmpty()) {
+            showBanner("جميع الأجهزة مفصولة بالفعل")
             return
         }
         hapticTap()
         val updatedList = devices.map { dev ->
-            if (dev.isStranger && !dev.isBlocked) {
+            if (dev.canDisconnect && !dev.isBlocked) {
                 val cut = dev.copy(
                     isBlocked = true,
                     blockedUntilMillis = null,
-                    blockMethodAr = "فصل جماعي للغرباء ⛔",
+                    blockMethodAr = "تم قطع الإنترنت عنه ⛔",
                 )
                 persistDeviceState(cut)
-                cutter.startCut(cut, networkInfo.gatewayIp, networkInfo.isRootAvailable)
+                cutter.startCut(
+                    device = cut,
+                    gatewayIp = networkInfo.gatewayIp,
+                    localIp = networkInfo.localIp,
+                    routerPassword = routerPassword,
+                    isRootAvailable = networkInfo.isRootAvailable,
+                )
+                silentRouterCutCommand = cut to System.currentTimeMillis()
                 cut
             } else {
                 dev
             }
         }
         devices = scanner.sortDevices(updatedList)
-        showBanner("تم فصل الاتصال عن ${strangers.size} أجهزة غريبة بضغطة واحدة ✂️")
+        showBanner("تم فصل النت عن جميع المتصلين (${targets.size}) بكبسة واحدة ✂️")
     }
 
-    /** إعادة الاتصال لجميع الأجهزة المفصولة */
     fun reconnectAllDevices() {
         val blocked = devices.filter { it.isBlocked }
         if (blocked.isEmpty()) return
         hapticTap()
         cutter.stopAll(
             gatewayIp = networkInfo.gatewayIp,
+            routerPassword = routerPassword,
             isRootAvailable = networkInfo.isRootAvailable,
             devices = blocked,
         )
@@ -315,10 +298,9 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         devices = scanner.sortDevices(updatedList)
-        showBanner("تمت إعادة الاتصال لجميع الأجهزة (${blocked.size}) ✓")
+        showBanner("تمت إعادة النت لجميع الأجهزة (${blocked.size}) ✓")
     }
 
-    /** تسمية الجهاز وتحديد نوعه وثقته */
     fun saveDeviceDetails(
         device: ConnectedDevice,
         customName: String,
@@ -334,19 +316,11 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
         updateDeviceInList(updated)
         persistDeviceState(updated)
         selectedDeviceForSheet = null
-        showBanner("تم حفظ بيانات «${updated.displayName}»")
+        showBanner("تم تغيير الاسم إلى «${updated.displayName}»")
     }
 
     fun openRouterBlocker(device: ConnectedDevice?) {
         hapticTap()
-        if (device != null) {
-            copyToClipboard("MAC", device.mac)
-            if (!device.isBlocked && device.canDisconnect) {
-                cutDevice(device, DisconnectMode.ROUTER_PERMANENT)
-                return
-            }
-        }
-        selectedDeviceForSheet = null
         routerBlockerDevice = device
         showRouterScreen = true
     }
@@ -380,9 +354,6 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleAutoCutStrangers(enabled: Boolean) {
         autoCutStrangers = enabled
         store.autoCutStrangers = enabled
-        if (enabled) {
-            cutAllStrangers()
-        }
     }
 
     fun copyToClipboard(label: String, text: String) {
@@ -397,27 +368,13 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
         MacVendorDb.detectRouterGuide(networkInfo.gatewayIp)
 
     fun filteredDevices(): List<ConnectedDevice> {
-        val byTab = when (selectedTab) {
-            FilterTab.ALL -> devices
-            FilterTab.CAMERAS -> devices.filter { it.isCamera }
-            FilterTab.CONNECTED -> devices.filter { !it.isBlocked }
-            FilterTab.BLOCKED -> devices.filter { it.isBlocked }
-            FilterTab.STRANGERS -> devices.filter { it.isStranger }
-        }
-        val q = searchQuery.trim()
-        if (q.isEmpty()) return byTab
-        return byTab.filter {
-            it.displayName.contains(q, ignoreCase = true) ||
-                it.vendorAr.contains(q, ignoreCase = true) ||
-                it.ip.contains(q, ignoreCase = true) ||
-                it.mac.contains(q, ignoreCase = true)
-        }
+        return devices
     }
 
     fun showBanner(msg: String) {
         bannerMessage = msg
         viewModelScope.launch {
-            delay(3600L)
+            delay(3000L)
             if (bannerMessage == msg) {
                 bannerMessage = null
             }

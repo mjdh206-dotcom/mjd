@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>حارس الشبكة — تمت برمجة هذا التطبيق بواسطة Amjad omega</title>
+  <title>حارس الشبكة — فصل النت بكبسة واحدة بدون روت</title>
   <style>
     :root {
       --obsidian: #060B14;
-      --deep-navy: #0A1220;
       --card-surface: #101B2E;
       --card-elevated: #16243D;
       --border-subtle: #223554;
@@ -19,7 +18,6 @@
       --coral-dim: #4C0519;
       --sky: #38BDF8;
       --amber: #F59E0B;
-      --amber-dim: #451A03;
       --text-white: #F8FAFC;
       --text-silver: #94A3B8;
     }
@@ -43,7 +41,7 @@
 
     .apk-banner {
       width: 100%;
-      max-width: 470px;
+      max-width: 460px;
       background: linear-gradient(135deg, #064E3B 0%, #0F2942 100%);
       border: 1.5px solid var(--emerald);
       border-radius: 18px;
@@ -80,7 +78,7 @@
 
     .phone-frame {
       width: 100%;
-      max-width: 470px;
+      max-width: 460px;
       background: var(--obsidian);
       border: 2px solid var(--border-subtle);
       border-radius: 28px;
@@ -88,11 +86,40 @@
       box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
     }
 
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .shield-box {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--emerald), var(--emerald-dim));
+      border: 1px solid rgba(52, 211, 153, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .header h1 {
+      font-size: 19px;
+      font-weight: 800;
+    }
+
+    .header p {
+      font-size: 13px;
+      color: var(--emerald-bright);
+    }
+
     .amjad-banner {
       background: linear-gradient(90deg, #0A2E26, #13233F, #2B1B06);
-      border: 1px solid rgba(52, 211, 153, 0.55);
+      border: 1px solid rgba(245, 158, 11, 0.6);
       border-radius: 14px;
-      padding: 9px 14px;
+      padding: 9px 12px;
       text-align: center;
       color: var(--amber);
       font-weight: 800;
@@ -100,263 +127,66 @@
       margin-bottom: 12px;
     }
 
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .shield-box {
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, var(--emerald), var(--emerald-dim));
-      border: 1px solid rgba(52, 211, 153, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-    }
-
-    .brand h1 {
-      font-size: 19px;
-      font-weight: 800;
-    }
-
-    .brand p {
-      font-size: 12px;
-      color: var(--text-silver);
-    }
-
-    .btn-small {
-      background: var(--card-elevated);
-      border: 1px solid var(--border-subtle);
-      color: var(--sky);
-      border-radius: 12px;
-      padding: 8px 12px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .radar-card {
-      background: linear-gradient(180deg, #0E2238 0%, var(--card-surface) 100%);
+    .control-card {
+      background: var(--card-surface);
       border: 1px solid rgba(16, 185, 129, 0.35);
-      border-radius: 22px;
-      padding: 15px;
-      margin-bottom: 12px;
+      border-radius: 20px;
+      padding: 14px;
+      margin-bottom: 14px;
     }
 
-    .radar-top {
+    .counts-row {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-
-    .ssid-row {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      font-size: 16px;
-      font-weight: 800;
-    }
-
-    .dot-online {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: var(--emerald-bright);
-      box-shadow: 0 0 8px var(--emerald-bright);
-    }
-
-    .sub-ip {
-      font-size: 12px;
-      color: var(--text-silver);
-      margin-top: 3px;
-    }
-
-    .signal-pill {
-      background: rgba(6, 78, 59, 0.7);
-      border: 1px solid rgba(16, 185, 129, 0.45);
-      color: var(--emerald-bright);
-      padding: 6px 10px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-
-    .stat-box {
-      border-radius: 13px;
-      padding: 8px 4px;
-      text-align: center;
-    }
-
-    .stat-box .num {
-      font-size: 19px;
-      font-weight: 800;
-    }
-
-    .stat-box .lbl {
-      font-size: 11px;
-      color: var(--text-white);
-      margin-top: 2px;
-    }
-
-    .stat-connected { background: rgba(6, 78, 59, 0.45); border: 1px solid rgba(52, 211, 153, 0.35); }
-    .stat-connected .num { color: var(--emerald-bright); }
-
-    .stat-cameras { background: #0C2D48; border: 1px solid rgba(56, 189, 248, 0.45); }
-    .stat-cameras .num { color: var(--sky); }
-
-    .stat-blocked { background: rgba(76, 5, 25, 0.45); border: 1px solid rgba(251, 113, 133, 0.35); }
-    .stat-blocked .num { color: var(--coral-bright); }
-
-    .stat-strangers { background: rgba(69, 26, 3, 0.45); border: 1px solid rgba(245, 158, 11, 0.35); }
-    .stat-strangers .num { color: var(--amber); }
-
-    .progress-bar-bg {
-      width: 100%;
-      height: 8px;
-      background: var(--deep-navy);
-      border-radius: 99px;
-      overflow: hidden;
-      margin-bottom: 6px;
-      display: none;
-    }
-
-    .progress-bar-fill {
-      height: 100%;
-      background: var(--emerald-bright);
-      width: 0%;
-      transition: width 0.15s linear;
-    }
-
-    .status-text {
-      font-size: 12px;
-      color: var(--text-silver);
       margin-bottom: 10px;
-    }
-
-    .scan-buttons-row {
-      display: flex;
-      gap: 8px;
+      font-size: 14px;
+      font-weight: 800;
     }
 
     .scan-btn {
-      flex: 1.2;
+      width: 100%;
       background: var(--emerald);
       color: #032219;
       border: none;
-      border-radius: 15px;
-      padding: 12px 8px;
-      font-size: 14px;
+      border-radius: 14px;
+      padding: 13px;
+      font-size: 15px;
       font-weight: 800;
       cursor: pointer;
-    }
-
-    .cam-scan-btn {
-      flex: 1;
-      background: #0C2D48;
-      color: var(--sky);
-      border: 1px solid rgba(56, 189, 248, 0.6);
-      border-radius: 15px;
-      padding: 12px 8px;
-      font-size: 14px;
-      font-weight: 800;
-      cursor: pointer;
-    }
-
-    .batch-col {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 12px;
     }
 
     .batch-row {
       display: flex;
       gap: 8px;
+      margin-top: 10px;
     }
 
     .batch-btn {
       flex: 1;
-      padding: 11px 10px;
-      border-radius: 14px;
+      padding: 10px;
+      border-radius: 12px;
       font-size: 13px;
       font-weight: 800;
       cursor: pointer;
       text-align: center;
     }
 
-    .batch-cam-cut {
-      background: #3B0A26;
-      border: 1.2px solid var(--coral-bright);
-      color: var(--coral-bright);
-    }
-
     .batch-cut {
-      background: rgba(244, 63, 94, 0.18);
-      border: 1px solid rgba(244, 63, 94, 0.65);
+      background: rgba(244, 63, 94, 0.2);
+      border: 1px solid var(--coral);
       color: var(--coral-bright);
     }
 
     .batch-restore {
-      background: rgba(16, 185, 129, 0.16);
-      border: 1px solid rgba(16, 185, 129, 0.55);
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid var(--emerald);
       color: var(--emerald-bright);
     }
 
-    .tabs-row {
-      display: flex;
-      gap: 6px;
-      overflow-x: auto;
-      margin-bottom: 8px;
-      padding-bottom: 2px;
-    }
-
-    .tab-chip {
-      background: var(--card-surface);
-      border: 1px solid var(--border-subtle);
-      color: var(--text-white);
-      padding: 7px 12px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .tab-chip.active {
-      background: var(--emerald);
-      border-color: var(--emerald-bright);
-      color: #032219;
-    }
-
-    .search-input {
-      width: 100%;
-      background: var(--card-surface);
-      border: 1px solid var(--border-subtle);
-      color: var(--text-white);
-      padding: 10px 14px;
-      border-radius: 14px;
-      font-size: 13px;
-      margin-bottom: 12px;
-      outline: none;
+    .section-title {
+      font-size: 15px;
+      font-weight: 800;
+      margin-bottom: 10px;
     }
 
     .device-list {
@@ -365,142 +195,84 @@
       gap: 10px;
     }
 
-    .device-card {
+    .phone-row {
       background: var(--card-surface);
-      border: 1.4px solid rgba(16, 185, 129, 0.4);
-      border-radius: 20px;
+      border: 1.5px solid rgba(16, 185, 129, 0.45);
+      border-radius: 18px;
       padding: 14px;
-    }
-
-    .device-card.camera-card {
-      background: #0D2036;
-      border-color: rgba(56, 189, 248, 0.75);
-    }
-
-    .device-card.stranger {
-      border-color: rgba(245, 158, 11, 0.5);
-    }
-
-    .device-card.blocked {
-      background: #210B16;
-      border-color: rgba(244, 63, 94, 0.85);
-    }
-
-    .dev-top {
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-
-    .dev-identity {
-      display: flex;
-      align-items: center;
       gap: 10px;
     }
 
-    .dev-icon {
-      width: 44px;
-      height: 44px;
+    .phone-row.blocked {
+      background: #230B17;
+      border-color: var(--coral);
+    }
+
+    .phone-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .phone-icon {
+      width: 48px;
+      height: 48px;
       border-radius: 14px;
       background: var(--card-elevated);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
+      font-size: 24px;
+      flex-shrink: 0;
     }
 
-    .device-card.blocked .dev-icon { background: var(--coral-dim); }
-
-    .dev-title { font-size: 15px; font-weight: 800; }
-    .device-card.blocked .dev-title { color: var(--coral-bright); }
-    .dev-sub { font-size: 12px; color: var(--text-silver); margin-top: 2px; }
-
-    .badge {
-      padding: 4px 9px;
-      border-radius: 10px;
-      font-size: 11px;
-      font-weight: 700;
+    .phone-row.blocked .phone-icon {
+      background: var(--coral-dim);
     }
 
-    .badge.camera { background: #0C2D48; color: var(--sky); border: 1px solid rgba(56, 189, 248, 0.4); }
-    .badge.trusted { background: var(--emerald-dim); color: var(--emerald-bright); border: 1px solid rgba(52, 211, 153, 0.4); }
-    .badge.stranger { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.4); }
-    .badge.blocked { background: var(--coral-dim); color: var(--coral-bright); border: 1px solid rgba(251, 113, 133, 0.4); }
-    .badge.router { background: #0C2D48; color: var(--sky); border: 1px solid rgba(56, 189, 248, 0.4); }
+    .phone-name {
+      font-size: 15px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-    .dev-meta {
-      background: var(--deep-navy);
-      border-radius: 12px;
-      padding: 8px 12px;
+    .phone-row.blocked .phone-name {
+      color: var(--coral-bright);
+    }
+
+    .phone-sub {
       font-size: 12px;
-      margin-bottom: 10px;
+      color: var(--text-silver);
+      margin-top: 3px;
     }
 
-    .dev-meta-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .phone-row.blocked .phone-sub {
+      color: var(--coral-bright);
     }
 
-    .dev-ports {
-      font-size: 11px;
-      color: var(--sky);
-      margin-top: 4px;
-    }
-
-    .dev-meta .ip { color: var(--sky); font-weight: 700; }
-    .dev-meta .mac { color: var(--text-silver); font-size: 11px; }
-    .dev-meta .ping { color: var(--emerald-bright); font-weight: 700; }
-    .device-card.blocked .dev-meta .ping { color: var(--coral-bright); }
-
-    .blocked-attack-box {
-      background: rgba(76, 5, 25, 0.55);
-      border: 1px solid rgba(244, 63, 94, 0.5);
-      border-radius: 12px;
-      padding: 9px 11px;
-      font-size: 12px;
-      margin-bottom: 10px;
-      line-height: 1.5;
-    }
-
-    .dev-actions {
-      display: flex;
-      gap: 8px;
-    }
-
-    .btn-cut-main {
-      flex: 1.5;
+    .one-click-btn {
       background: var(--coral);
       color: var(--text-white);
       border: none;
       border-radius: 14px;
-      padding: 11px;
-      font-size: 13px;
+      padding: 13px 16px;
+      font-size: 14px;
       font-weight: 800;
       cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
-    .btn-cut-main.reconnect {
+    .one-click-btn.restore {
       background: var(--emerald);
       color: #032219;
-    }
-
-    .btn-sec {
-      background: var(--card-elevated);
-      border: 1px solid var(--border-subtle);
-      color: var(--text-white);
-      border-radius: 14px;
-      padding: 11px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .btn-sec.amber {
-      background: var(--amber-dim);
-      border-color: rgba(245, 158, 11, 0.7);
-      color: var(--amber);
     }
 
     .footer-credit {
@@ -508,19 +280,11 @@
       background: var(--card-surface);
       border: 1px solid var(--border-subtle);
       border-radius: 16px;
-      padding: 13px;
+      padding: 14px;
       text-align: center;
-    }
-
-    .footer-credit h4 {
-      color: var(--emerald-bright);
+      color: var(--amber);
+      font-weight: 800;
       font-size: 14px;
-      margin-bottom: 3px;
-    }
-
-    .footer-credit p {
-      color: var(--text-silver);
-      font-size: 12px;
     }
 
     .toast {
@@ -533,7 +297,6 @@
       border-radius: 16px;
       font-size: 13px;
       font-weight: 700;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
       display: none;
       z-index: 100;
     }
@@ -541,436 +304,122 @@
 </head>
 <body>
 
-  <!-- شريط تحميل APK الأندرويد المباشر -->
   <div class="apk-banner">
     <div class="apk-banner-info">
-      <h2>📲 تحميل تطبيق الأندرويد المحدّث (APK 2.0)</h2>
-      <p>مع كشف الكاميرات + الهجوم المزدوج للفصل + توقيع Amjad omega</p>
+      <h2>📲 تحميل النسخة المبسّطة (APK 3.0)</h2>
+      <p>أسماء الموبايلات المتصلة + كبسة واحدة لفصل النت بدون روت</p>
     </div>
-    <a class="apk-download-btn" href="/dist/haris-wifi-1.0.0-debug.apk" download="haris-wifi-2.0.0.apk">
+    <a class="apk-download-btn" href="/dist/haris-wifi-1.0.0-debug.apk" download="haris-wifi-3.0.0.apk">
       تحميل APK ⬇
     </a>
   </div>
 
   <div class="phone-frame">
     <div class="header">
-      <div class="brand">
-        <div class="shield-box">🛡️</div>
-        <div>
-          <h1>حارس الشبكة</h1>
-          <p>كاشف المتصلين والكاميرات وقاطع الاتصال</p>
-        </div>
+      <div class="shield-box">🛡️</div>
+      <div>
+        <h1>حارس الشبكة — بدون روت</h1>
+        <p>الشبكة المتصلة: شبكة الواي فاي المنزلية</p>
       </div>
-      <button class="btn-small" onclick="showToast('في تطبيق الأندرويد تفتح صفحة الراوتر مع الحظر الأوتوماتيكي بضغطة واحدة!')">📡 الراوتر</button>
     </div>
 
     <div class="amjad-banner">
       ✨ تمت برمجة هذا التطبيق بواسطة Amjad omega ✨
     </div>
 
-    <div class="radar-card">
-      <div class="radar-top">
-        <div>
-          <div class="ssid-row">
-            <span class="dot-online"></span>
-            <span>شبكة الواي فاي المنزلية</span>
-          </div>
-          <div class="sub-ip">الراوتر: 192.168.1.1 · هاتفك: 192.168.1.105</div>
-        </div>
-        <div class="signal-pill">94% 📶</div>
+    <div class="control-card">
+      <div class="counts-row">
+        <span style="color:var(--emerald-bright);">🟢 متصل بالنت الآن: <b id="activeCount">0</b></span>
+        <span style="color:var(--coral-bright);">🔴 مفصول عنه النت: <b id="blockedCount">0</b></span>
       </div>
-
-      <div class="stats-grid">
-        <div class="stat-box stat-connected">
-          <div class="num" id="statConnected">0</div>
-          <div class="lbl">متصل الآن</div>
-        </div>
-        <div class="stat-box stat-cameras">
-          <div class="num" id="statCameras">0</div>
-          <div class="lbl">📷 كاميرات</div>
-        </div>
-        <div class="stat-box stat-blocked">
-          <div class="num" id="statBlocked">0</div>
-          <div class="lbl">مفصول ⛔</div>
-        </div>
-        <div class="stat-box stat-strangers">
-          <div class="num" id="statStrangers">0</div>
-          <div class="lbl">غرباء ⚠️</div>
-        </div>
-      </div>
-
-      <div class="progress-bar-bg" id="progressBarBg">
-        <div class="progress-bar-fill" id="progressBarFill"></div>
-      </div>
-      <div class="status-text" id="statusText">جاهز لفحص الشبكة والكاميرات</div>
-
-      <div class="scan-buttons-row">
-        <button class="scan-btn" id="scanBtn" onclick="triggerScan(false)">🔍 فحص الشبكة الآن</button>
-        <button class="cam-scan-btn" onclick="triggerScan(true)">📷 كشف الكاميرات</button>
-      </div>
+      <button class="scan-btn" onclick="refreshList()">🔄 تحديث قائمة الموبايلات المتصلة</button>
+      <div class="batch-row" id="batchRow"></div>
     </div>
 
-    <div class="batch-col" id="batchCol"></div>
-
-    <div class="tabs-row" id="tabsRow"></div>
-
-    <input
-      type="text"
-      class="search-input"
-      id="searchInput"
-      placeholder="ابحث باسم الجهاز أو الكاميرا أو الـ IP أو الماركة..."
-      oninput="renderAll()"
-    />
+    <div class="section-title" id="listHeader">الموبايلات والأجهزة المتصلة بالشبكة:</div>
 
     <div class="device-list" id="deviceList"></div>
 
     <div class="footer-credit">
-      <h4>تمت برمجة هذا التطبيق بواسطة Amjad omega</h4>
-      <p>حارس الشبكة — كاشف المتصلين والكاميرات وقاطع الاتصال الفوري</p>
+      تمت برمجة هذا التطبيق بواسطة Amjad omega
     </div>
   </div>
 
   <div class="toast" id="toastBox"></div>
 
   <script>
-    let currentTab = 'ALL';
-
-    const devices = [
-      {
-        ip: '192.168.1.108',
-        mac: 'C0:56:E3:4A:91:11',
-        defaultName: 'كاميرا مراقبة Hikvision/EZVIZ',
-        vendor: 'هيك فيجن (Hikvision)',
-        typeLabel: 'كاميرا مراقبة',
-        emoji: '📷',
-        ping: 12,
-        ports: '554, 8000, 80 (RTSP/ONVIF)',
-        isCamera: true,
-        isBlocked: false,
-        blockMethod: '',
-        packets: 0,
-        isTrusted: false,
-        isGateway: false,
-        isSelf: false
-      },
-      {
-        ip: '192.168.1.109',
-        mac: '00:12:12:88:34:20',
-        defaultName: 'كاميرا واي فاي ICSee / XMeye',
-        vendor: 'آي سي سي (ICSee)',
-        typeLabel: 'كاميرا مراقبة',
-        emoji: '📷',
-        ping: 16,
-        ports: '554, 34567, 8899 (ONVIF)',
-        isCamera: true,
-        isBlocked: false,
-        blockMethod: '',
-        packets: 0,
-        isTrusted: false,
-        isGateway: false,
-        isSelf: false
-      },
-      {
-        ip: '192.168.1.115',
-        mac: '3C:EF:8C:71:09:4D',
-        defaultName: 'كاميرا مراقبة Dahua / Imou',
-        vendor: 'داهوا / إيمو (Dahua)',
-        typeLabel: 'كاميرا مراقبة',
-        emoji: '📷',
-        ping: 19,
-        ports: '554, 37777 (RTSP)',
-        isCamera: true,
-        isBlocked: false,
-        blockMethod: '',
-        packets: 0,
-        isTrusted: false,
-        isGateway: false,
-        isSelf: false
-      },
-      {
-        ip: '192.168.1.102',
-        mac: 'F0:18:98:4A:91:C2',
-        defaultName: 'آيفون 15 برو',
-        vendor: 'آبل (Apple)',
-        typeLabel: 'هاتف ذكي',
-        emoji: '📱',
-        ping: 14,
-        ports: '62078',
-        isCamera: false,
-        isBlocked: false,
-        blockMethod: '',
-        packets: 0,
-        isTrusted: false,
-        isGateway: false,
-        isSelf: false
-      },
-      {
-        ip: '192.168.1.112',
-        mac: '50:01:D9:3B:12:88',
-        defaultName: 'سامسونج جالاكسي S23',
-        vendor: 'سامسونج (Samsung)',
-        typeLabel: 'هاتف ذكي',
-        emoji: '📱',
-        ping: 21,
-        ports: '8080',
-        isCamera: false,
-        isBlocked: false,
-        blockMethod: '',
-        packets: 0,
-        isTrusted: true,
-        isGateway: false,
-        isSelf: false
-      },
-      {
-        ip: '192.168.1.1',
-        mac: '88:28:B3:01:00:01',
-        defaultName: 'الراوتر الأساسي (بوابة الشبكة)',
-        vendor: 'هواوي فايبر (Huawei)',
-        typeLabel: 'الراوتر الأساسي',
-        emoji: '📡',
-        ping: 2,
-        ports: '80, 443, 53',
-        isCamera: false,
-        isBlocked: false,
-        blockMethod: '',
-        packets: 0,
-        isTrusted: true,
-        isGateway: true,
-        isSelf: false
-      }
+    const phones = [
+      { ip: '192.168.1.102', name: 'موبايل آيفون iPhone 15', vendor: 'آبل (Apple)', emoji: '📱', isBlocked: false },
+      { ip: '192.168.1.104', name: 'موبايل سامسونج Galaxy A54', vendor: 'سامسونج', emoji: '📱', isBlocked: false },
+      { ip: '192.168.1.108', name: 'موبايل شاومي Redmi Note 13', vendor: 'شاومي', emoji: '📱', isBlocked: false },
+      { ip: '192.168.1.112', name: 'موبايل هواوي Nova', vendor: 'هواوي', emoji: '📱', isBlocked: false },
+      { ip: '192.168.1.115', name: 'كاميرا مراقبة واي فاي', vendor: 'كاميرا متصلة', emoji: '📷', isBlocked: false }
     ];
-
-    setInterval(() => {
-      let anyBlocked = false;
-      devices.forEach(d => {
-        if (d.isBlocked) {
-          d.packets += Math.floor(Math.random() * 48) + 32;
-          anyBlocked = true;
-        }
-      });
-      if (anyBlocked) renderAll();
-    }, 900);
-
-    function isStranger(d) {
-      return !d.isGateway && !d.isSelf && !d.isTrusted;
-    }
 
     function showToast(msg) {
       const box = document.getElementById('toastBox');
       box.textContent = msg;
       box.style.display = 'block';
-      clearTimeout(window.__toastTimer);
-      window.__toastTimer = setTimeout(() => {
-        box.style.display = 'none';
-      }, 3200);
+      clearTimeout(window.__t);
+      window.__t = setTimeout(() => { box.style.display = 'none'; }, 2800);
     }
 
-    function toggleCut(ip) {
-      const dev = devices.find(d => d.ip === ip);
-      if (!dev || dev.isGateway || dev.isSelf) return;
-      dev.isBlocked = !dev.isBlocked;
-      if (dev.isBlocked) {
-        dev.packets = 64;
-        dev.blockMethod = dev.isCamera
-          ? 'إغراق بث الكاميرا نشط (12 خط RTSP/ONVIF) ⛔'
-          : 'هجوم قطع الجلسات نشط (8 خطوط TCP/UDP) ⛔';
-        showToast(`بدأ قطع الاتصال والبث عن «${dev.defaultName}» ✂️`);
-      } else {
-        dev.packets = 0;
-        dev.blockMethod = '';
-        showToast(`تمت إعادة الاتصال لـ «${dev.defaultName}» ✓`);
-      }
-      renderAll();
+    function togglePhone(ip) {
+      const p = phones.find(x => x.ip === ip);
+      if (!p) return;
+      p.isBlocked = !p.isBlocked;
+      showToast(p.isBlocked ? `تم فصل النت عن «${p.name}» ✂️` : `تمت إعادة النت لـ «${p.name}» ✓`);
+      render();
     }
 
-    function cutAllCameras() {
-      let count = 0;
-      devices.forEach(d => {
-        if (d.isCamera && !d.isBlocked) {
-          d.isBlocked = true;
-          d.packets = 96;
-          d.blockMethod = 'إغراق وإيقاف بث الكاميرا (12 خط RTSP/ONVIF) ⛔';
-          count++;
-        }
-      });
-      showToast(`تم قطع البث والاتصال عن ${count} كاميرات مراقبة بضغطة واحدة 📷✂️`);
-      renderAll();
+    function cutAll() {
+      phones.forEach(p => p.isBlocked = true);
+      showToast('تم فصل النت عن جميع الموبايلات المتصلة بكبسة واحدة ✂️');
+      render();
     }
 
-    function cutAllStrangers() {
-      let count = 0;
-      devices.forEach(d => {
-        if (isStranger(d) && !d.isBlocked) {
-          d.isBlocked = true;
-          d.packets = 72;
-          d.blockMethod = 'فصل جماعي للغرباء والكاميرات ⛔';
-          count++;
-        }
-      });
-      showToast(`تم فصل الاتصال عن ${count} أجهزة غريبة ✂️`);
-      renderAll();
+    function restoreAll() {
+      phones.forEach(p => p.isBlocked = false);
+      showToast('تمت إعادة النت لجميع الموبايلات ✓');
+      render();
     }
 
-    function reconnectAll() {
-      devices.forEach(d => {
-        d.isBlocked = false;
-        d.packets = 0;
-        d.blockMethod = '';
-      });
-      showToast('تمت إعادة الاتصال لجميع الأجهزة ✓');
-      renderAll();
+    function refreshList() {
+      showToast('تم تحديث قائمة الموبايلات المتصلة بالشبكة ✓');
+      render();
     }
 
-    function triggerScan(deepCam) {
-      const barBg = document.getElementById('progressBarBg');
-      const barFill = document.getElementById('progressBarFill');
-      const status = document.getElementById('statusText');
+    function render() {
+      const active = phones.filter(p => !p.isBlocked).length;
+      const blocked = phones.filter(p => p.isBlocked).length;
+      document.getElementById('activeCount').textContent = active;
+      document.getElementById('blockedCount').textContent = blocked;
+      document.getElementById('listHeader').textContent = `الموبايلات والأجهزة المتصلة بالشبكة (${phones.length}):`;
 
-      barBg.style.display = 'block';
-      let pct = 10;
-      barFill.style.width = pct + '%';
-      status.textContent = deepCam
-        ? 'جاري الفحص العميق لكاميرات المراقبة (ONVIF / RTSP / 554 / 8000 / 37777 / 34567)...'
-        : 'جاري فحص المتصلين والكاميرات على الشبكة...';
-
-      const timer = setInterval(() => {
-        pct += 22;
-        if (pct >= 100) {
-          clearInterval(timer);
-          barFill.style.width = '100%';
-          setTimeout(() => {
-            barBg.style.display = 'none';
-            if (deepCam) currentTab = 'CAMERAS';
-            renderAll();
-            showToast(deepCam ? 'تم اكتشاف 3 كاميرات مراقبة على الشبكة 📷' : 'اكتمل فحص الشبكة ✓');
-          }, 220);
-        } else {
-          barFill.style.width = pct + '%';
-        }
-      }, 160);
-    }
-
-    function selectTab(tab) {
-      currentTab = tab;
-      renderAll();
-    }
-
-    function renderAll() {
-      const connectedCount = devices.filter(d => !d.isBlocked).length;
-      const camerasCount = devices.filter(d => d.isCamera).length;
-      const activeCams = devices.filter(d => d.isCamera && !d.isBlocked).length;
-      const blockedCount = devices.filter(d => d.isBlocked).length;
-      const strangersActive = devices.filter(d => isStranger(d) && !d.isBlocked).length;
-      const strangersTotal = devices.filter(d => isStranger(d)).length;
-
-      document.getElementById('statConnected').textContent = connectedCount;
-      document.getElementById('statCameras').textContent = camerasCount;
-      document.getElementById('statBlocked').textContent = blockedCount;
-      document.getElementById('statStrangers').textContent = strangersActive;
-
-      document.getElementById('statusText').textContent =
-        `متصل: ${connectedCount} · كاميرات: ${camerasCount} · مفصول: ${blockedCount}`;
-
-      // أزرار الفصل الجماعي
       let batchHtml = '';
-      if (activeCams > 0) {
-        batchHtml += `<div class="batch-btn batch-cam-cut" onclick="cutAllCameras()">📷✂️ فصل وإيقاف بث كل الكاميرات بضغطة واحدة (${activeCams})</div>`;
-      }
-      if (strangersActive > 0 || blockedCount > 0) {
-        batchHtml += `<div class="batch-row">`;
-        if (strangersActive > 0) {
-          batchHtml += `<div class="batch-btn batch-cut" onclick="cutAllStrangers()">✂️ فصل كل الغرباء (${strangersActive})</div>`;
-        }
-        if (blockedCount > 0) {
-          batchHtml += `<div class="batch-btn batch-restore" onclick="reconnectAll()">↺ إعادة الاتصال للجميع (${blockedCount})</div>`;
-        }
-        batchHtml += `</div>`;
-      }
-      document.getElementById('batchCol').innerHTML = batchHtml;
+      if (active > 0) batchHtml += `<div class="batch-btn batch-cut" onclick="cutAll()">✂️ فصل النت عن الكل (${active})</div>`;
+      if (blocked > 0) batchHtml += `<div class="batch-btn batch-restore" onclick="restoreAll()">↺ إعادة النت للكل (${blocked})</div>`;
+      document.getElementById('batchRow').innerHTML = batchHtml;
 
-      // التبويبات
-      const tabs = [
-        { id: 'ALL', label: `الكل (${devices.length})` },
-        { id: 'CAMERAS', label: `📷 الكاميرات (${camerasCount})` },
-        { id: 'CONNECTED', label: `متصل الآن (${connectedCount})` },
-        { id: 'BLOCKED', label: `مفصول ⛔ (${blockedCount})` },
-        { id: 'STRANGERS', label: `غرباء ⚠️ (${strangersTotal})` },
-      ];
-      document.getElementById('tabsRow').innerHTML = tabs.map(t =>
-        `<button class="tab-chip ${currentTab === t.id ? 'active' : ''}" onclick="selectTab('${t.id}')">${t.label}</button>`
-      ).join('');
-
-      const q = document.getElementById('searchInput').value.trim().toLowerCase();
-      const filtered = devices.filter(d => {
-        if (currentTab === 'CAMERAS' && !d.isCamera) return false;
-        if (currentTab === 'CONNECTED' && d.isBlocked) return false;
-        if (currentTab === 'BLOCKED' && !d.isBlocked) return false;
-        if (currentTab === 'STRANGERS' && !isStranger(d)) return false;
-        if (!q) return true;
-        return d.defaultName.toLowerCase().includes(q) ||
-               d.vendor.toLowerCase().includes(q) ||
-               d.ip.includes(q) ||
-               d.mac.toLowerCase().includes(q);
-      });
-
-      document.getElementById('deviceList').innerHTML = filtered.map(d => {
-        const cardClass = d.isBlocked
-          ? 'device-card blocked'
-          : d.isCamera
-          ? 'device-card camera-card'
-          : isStranger(d)
-          ? 'device-card stranger'
-          : 'device-card';
-
-        let badgeHtml = '';
-        if (d.isBlocked) badgeHtml = `<span class="badge blocked">مفصول ⛔</span>`;
-        else if (d.isCamera) badgeHtml = `<span class="badge camera">كاميرا 📷</span>`;
-        else if (d.isGateway) badgeHtml = `<span class="badge router">الراوتر 📡</span>`;
-        else if (d.isTrusted) badgeHtml = `<span class="badge trusted">موثوق ✓</span>`;
-        else badgeHtml = `<span class="badge stranger">غريب ⚠️</span>`;
-
-        const actionsHtml = (!d.isGateway && !d.isSelf) ? `
-          <div class="dev-actions">
-            <button class="btn-cut-main ${d.isBlocked ? 'reconnect' : ''}" onclick="toggleCut('${d.ip}')">
-              ${d.isBlocked ? '↺ إعادة الاتصال الآن' : (d.isCamera ? '✂️ قطع بث الكاميرا فوراً' : '✂️ فصل الاتصال فوراً')}
-            </button>
-            <button class="btn-sec amber" onclick="toggleCut('${d.ip}'); showToast('تم نسخ الماك ${d.mac} وفتح القفل الأوتوماتيكي للراوتر!')">🔒 قفل راوتر</button>
-          </div>
-        ` : '';
-
-        return `
-          <div class="${cardClass}">
-            <div class="dev-top">
-              <div class="dev-identity">
-                <div class="dev-icon">${d.isBlocked ? '⛔' : d.emoji}</div>
-                <div>
-                  <div class="dev-title">${d.defaultName}</div>
-                  <div class="dev-sub">${d.vendor} · ${d.typeLabel}</div>
-                </div>
+      document.getElementById('deviceList').innerHTML = phones.map(p => `
+        <div class="phone-row ${p.isBlocked ? 'blocked' : ''}">
+          <div class="phone-info">
+            <div class="phone-icon">${p.isBlocked ? '⛔' : p.emoji}</div>
+            <div style="min-width:0;">
+              <div class="phone-name">${p.name}</div>
+              <div class="phone-sub">
+                ${p.isBlocked ? '🔴 تم فصل النت عنه · ' + p.ip : '🟢 متصل بالنت · ' + p.vendor + ' (' + p.ip + ')'}
               </div>
-              ${badgeHtml}
             </div>
-            <div class="dev-meta">
-              <div class="dev-meta-row">
-                <span class="ip">IP: ${d.ip}</span>
-                <span class="mac">MAC: ${d.mac}</span>
-                <span class="ping">${d.isBlocked ? 'مقطوع ⛔' : d.ping + 'ms ⚡'}</span>
-              </div>
-              <div class="dev-ports">📷 المنافذ النشطة: ${d.ports}</div>
-            </div>
-            ${d.isBlocked ? `
-              <div class="blocked-attack-box">
-                <div style="color:var(--coral-bright);font-weight:800;">🔥 ${d.blockMethod}</div>
-                <div>حزم القطع وإغراق الجلسة المرسلة: <b>${d.packets}</b> حزمة</div>
-              </div>
-            ` : ''}
-            ${actionsHtml}
           </div>
-        `;
-      }).join('');
+          <button class="one-click-btn ${p.isBlocked ? 'restore' : ''}" onclick="togglePhone('${p.ip}')">
+            ${p.isBlocked ? '↺ إعادة النت' : '✂️ فصل النت'}
+          </button>
+        </div>
+      `).join('');
     }
 
-    renderAll();
+    render();
   </script>
 </body>
 </html>

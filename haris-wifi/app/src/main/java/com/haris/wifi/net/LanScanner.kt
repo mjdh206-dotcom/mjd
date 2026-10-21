@@ -424,12 +424,10 @@ class LanScanner(private val context: Context) {
         }
 
         val elapsed = (System.currentTimeMillis() - start).toInt().coerceIn(2, 260)
-        val hostname = if (reachable) {
-            runCatching {
-                val addr = InetAddress.getByName(ip)
-                val name = addr.canonicalHostName ?: ""
-                if (name != ip) name else ""
-            }.getOrDefault("")
+        val hostname = if (reachable && !isGateway) {
+            DeviceNameResolver.resolveBestName(ip)
+        } else if (isGateway) {
+            "router.home"
         } else ""
 
         return HostProbeResult(

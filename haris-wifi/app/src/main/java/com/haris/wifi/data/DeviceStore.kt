@@ -78,9 +78,14 @@ class DeviceStore(context: Context) {
         get() = prefs.getBoolean(KEY_AUTO_CUT_STRANGERS, false)
         set(value) = prefs.edit().putBoolean(KEY_AUTO_CUT_STRANGERS, value).apply()
 
+    var routerPassword: String
+        get() = prefs.getString(KEY_ROUTER_PASS, "admin") ?: "admin"
+        set(value) = prefs.edit().putString(KEY_ROUTER_PASS, value).apply()
+
     companion object {
         private const val KEY_DEVICES = "devices_meta_json"
         private const val KEY_VIBRATE = "vibrate_enabled"
         private const val KEY_AUTO_CUT_STRANGERS = "auto_cut_strangers"
+        private const val KEY_ROUTER_PASS = "router_pass"
     }
 }
