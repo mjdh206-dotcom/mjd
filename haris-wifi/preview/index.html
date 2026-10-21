@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>حارس الشبكة — كاشف المتصلين وفصل الاتصال</title>
+  <style>
+    :root {
+      --obsidian: #060B14;
+      --deep-navy: #0A1220;
+      --card-surface: #101B2E;
+      --card-elevated: #16243D;
+      --border-subtle: #223554;
+      --emerald: #10B981;
+      --emerald-bright: #34D399;
+      --emerald-dim: #064E3B;
+      --coral: #F43F5E;
+      --coral-bright: #FB7185;
+      --coral-dim: #4C0519;
+      --sky: #38BDF8;
+      --amber: #F59E0B;
+      --amber-dim: #451A03;
+      --text-white: #F8FAFC;
+      --text-silver: #94A3B8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at top, #0E2238 0%, var(--obsidian) 65%);
+      color: var(--text-white);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 12px 48px;
+    }
+
+    .apk-banner {
+      width: 100%;
+      max-width: 460px;
+      background: linear-gradient(135deg, #064E3B 0%, #0F2942 100%);
+      border: 1.5px solid var(--emerald);
+      border-radius: 18px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.18);
+    }
+
+    .apk-banner-info h2 {
+      font-size: 15px;
+      color: var(--emerald-bright);
+      margin-bottom: 3px;
+    }
+
+    .apk-banner-info p {
+      font-size: 12px;
+      color: var(--text-silver);
+    }
+
+    .apk-download-btn {
+      background: var(--emerald);
+      color: #032219;
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      white-space: nowrap;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .apk-download-btn:hover {
+      background: var(--emerald-bright);
+      transform: translateY(-1px);
+    }
+
+    .phone-frame {
+      width: 100%;
+      max-width: 460px;
+      background: var(--obsidian);
+      border: 2px solid var(--border-subtle);
+      border-radius: 28px;
+      padding: 16px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .shield-box {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--emerald), var(--emerald-dim));
+      border: 1px solid rgba(52, 211, 153, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .brand h1 {
+      font-size: 19px;
+      font-weight: 800;
+    }
+
+    .brand p {
+      font-size: 12px;
+      color: var(--text-silver);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-small {
+      background: var(--card-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-white);
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-small.router {
+      color: var(--sky);
+    }
+
+    .radar-card {
+      background: linear-gradient(180deg, #0E2238 0%, var(--card-surface) 100%);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: 22px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .radar-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .ssid-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 17px;
+      font-weight: 800;
+    }
+
+    .dot-online {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--emerald-bright);
+      box-shadow: 0 0 8px var(--emerald-bright);
+    }
+
+    .sub-ip {
+      font-size: 12px;
+      color: var(--text-silver);
+      margin-top: 3px;
+    }
+
+    .signal-pill {
+      background: rgba(6, 78, 59, 0.7);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      color: var(--emerald-bright);
+      padding: 6px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .stat-box {
+      border-radius: 14px;
+      padding: 10px 8px;
+      text-align: center;
+    }
+
+    .stat-box .num {
+      font-size: 21px;
+      font-weight: 800;
+    }
+
+    .stat-box .lbl {
+      font-size: 11px;
+      color: var(--text-white);
+      margin-top: 2px;
+    }
+
+    .stat-connected {
+      background: rgba(6, 78, 59, 0.45);
+      border: 1px solid rgba(52, 211, 153, 0.35);
+    }
+    .stat-connected .num { color: var(--emerald-bright); }
+
+    .stat-blocked {
+      background: rgba(76, 5, 25, 0.45);
+      border: 1px solid rgba(251, 113, 133, 0.35);
+    }
+    .stat-blocked .num { color: var(--coral-bright); }
+
+    .stat-strangers {
+      background: rgba(69, 26, 3, 0.45);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+    }
+    .stat-strangers .num { color: var(--amber); }
+
+    .scan-progress-wrap {
+      margin-bottom: 10px;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 8px;
+      background: var(--deep-navy);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 6px;
+      display: none;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--emerald-bright);
+      width: 0%;
+      transition: width 0.15s linear;
+    }
+
+    .status-text {
+      font-size: 12px;
+      color: var(--text-silver);
+    }
+
+    .scan-btn {
+      width: 100%;
+      background: var(--emerald);
+      color: #032219;
+      border: none;
+      border-radius: 16px;
+      padding: 13px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.15s ease;
+    }
+
+    .scan-btn:hover {
+      background: var(--emerald-bright);
+    }
+
+    .batch-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .batch-btn {
+      flex: 1;
+      padding: 11px 10px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .batch-cut {
+      background: rgba(244, 63, 94, 0.18);
+      border: 1px solid rgba(244, 63, 94, 0.65);
+      color: var(--coral-bright);
+    }
+
+    .batch-restore {
+      background: rgba(16, 185, 129, 0.16);
+      border: 1px solid rgba(16, 185, 129, 0.55);
+      color: var(--emerald-bright);
+    }
+
+    .tabs-row {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      margin-bottom: 8px;
+      padding-bottom: 2px;
+    }
+
+    .tab-chip {
+      background: var(--card-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-white);
+      padding: 7px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .tab-chip.active {
+      background: var(--emerald);
+      border-color: var(--emerald-bright);
+      color: #032219;
+    }
+
+    .search-input {
+      width: 100%;
+      background: var(--card-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-white);
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 13px;
+      margin-bottom: 12px;
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: var(--emerald);
+    }
+
+    .device-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .device-card {
+      background: var(--card-surface);
+      border: 1.5px solid rgba(16, 185, 129, 0.4);
+      border-radius: 20px;
+      padding: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .device-card.stranger {
+      border-color: rgba(245, 158, 11, 0.5);
+    }
+
+    .device-card.blocked {
+      background: #1F0D18;
+      border-color: rgba(244, 63, 94, 0.8);
+    }
+
+    .device-card.system-node {
+      border-color: rgba(56, 189, 248, 0.45);
+    }
+
+    .dev-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .dev-identity {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .dev-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: var(--card-elevated);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .device-card.blocked .dev-icon {
+      background: var(--coral-dim);
+    }
+
+    .dev-title {
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .device-card.blocked .dev-title {
+      color: var(--coral-bright);
+    }
+
+    .dev-sub {
+      font-size: 12px;
+      color: var(--text-silver);
+      margin-top: 2px;
+    }
+
+    .badge {
+      padding: 4px 9px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .badge.trusted {
+      background: var(--emerald-dim);
+      color: var(--emerald-bright);
+      border: 1px solid rgba(52, 211, 153, 0.4);
+    }
+
+    .badge.stranger {
+      background: var(--amber-dim);
+      color: var(--amber);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+
+    .badge.blocked {
+      background: var(--coral-dim);
+      color: var(--coral-bright);
+      border: 1px solid rgba(251, 113, 133, 0.4);
+    }
+
+    .badge.router {
+      background: #0C2D48;
+      color: var(--sky);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+
+    .dev-meta {
+      background: var(--deep-navy);
+      border-radius: 12px;
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    .dev-meta .ip { color: var(--sky); font-weight: 700; }
+    .dev-meta .mac { color: var(--text-silver); font-size: 11px; }
+    .dev-meta .ping { color: var(--emerald-bright); font-weight: 700; }
+    .device-card.blocked .dev-meta .ping { color: var(--coral-bright); }
+
+    .blocked-note {
+      font-size: 12px;
+      color: var(--coral-bright);
+      margin-bottom: 10px;
+    }
+
+    .dev-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-cut-main {
+      flex: 1.6;
+      background: var(--coral);
+      color: var(--text-white);
+      border: none;
+      border-radius: 14px;
+      padding: 11px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .btn-cut-main.reconnect {
+      background: var(--emerald);
+      color: #032219;
+    }
+
+    .btn-sec {
+      background: var(--card-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-white);
+      border-radius: 14px;
+      padding: 11px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-sec.amber {
+      color: var(--amber);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      background: var(--card-elevated);
+      border: 1.5px solid var(--emerald-bright);
+      color: var(--text-white);
+      padding: 12px 18px;
+      border-radius: 16px;
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+      display: none;
+      z-index: 100;
+    }
+
+    /* نافذة التسمية / الراوتر */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 90;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 430px;
+      background: var(--obsidian);
+      border: 1.5px solid var(--border-subtle);
+      border-radius: 24px;
+      padding: 18px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .preset-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 10px 0 14px;
+    }
+
+    .preset-chip {
+      background: var(--card-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-white);
+      padding: 6px 10px;
+      border-radius: 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- شريط تحميل APK الأندرويد المباشر -->
+  <div class="apk-banner">
+    <div class="apk-banner-info">
+      <h2>📲 تطبيق أندرويد جاهز للتثبيت (APK)</h2>
+      <p>حارس الشبكة — الإصدار 1.0.0 عربي بالكامل</p>
+    </div>
+    <a class="apk-download-btn" href="/dist/haris-wifi-1.0.0-debug.apk" download="haris-wifi-1.0.0.apk">
+      تحميل APK ⬇
+    </a>
+  </div>
+
+  <!-- واجهة التطبيق التفاعلية -->
+  <div class="phone-frame">
+    <div class="header">
+      <div class="brand">
+        <div class="shield-box">🛡️</div>
+        <div>
+          <h1>حارس الشبكة</h1>
+          <p>كاشف المتصلين وفصل الاتصال بضغطة واحدة</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn-small router" onclick="openRouterModal(null)">📡 الراوتر</button>
+      </div>
+    </div>
+
+    <div class="radar-card">
+      <div class="radar-top">
+        <div>
+          <div class="ssid-row">
+            <span class="dot-online"></span>
+            <span>شبكة المنزل السريعة (5GHz)</span>
+          </div>
+          <div class="sub-ip">الراوتر: 192.168.1.1 · هاتفك: 192.168.1.105</div>
+        </div>
+        <div class="signal-pill">94% 📶</div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-box stat-connected">
+          <div class="num" id="statConnected">0</div>
+          <div class="lbl">متصل الآن</div>
+        </div>
+        <div class="stat-box stat-blocked">
+          <div class="num" id="statBlocked">0</div>
+          <div class="lbl">مفصول ⛔</div>
+        </div>
+        <div class="stat-box stat-strangers">
+          <div class="num" id="statStrangers">0</div>
+          <div class="lbl">غرباء ⚠️</div>
+        </div>
+      </div>
+
+      <div class="scan-progress-wrap">
+        <div class="progress-bar-bg" id="progressBarBg">
+          <div class="progress-bar-fill" id="progressBarFill"></div>
+        </div>
+        <div class="status-text" id="statusText">جاهز لفحص الشبكة</div>
+      </div>
+
+      <button class="scan-btn" id="scanBtn" onclick="triggerScan()">
+        🔍 فحص الشبكة الآن واكتشاف المتصلين
+      </button>
+    </div>
+
+    <div class="batch-row" id="batchRow"></div>
+
+    <div class="tabs-row" id="tabsRow"></div>
+
+    <input
+      type="text"
+      class="search-input"
+      id="searchInput"
+      placeholder="ابحث باسم الجهاز أو الـ IP أو الماركة..."
+      oninput="renderAll()"
+    />
+
+    <div class="device-list" id="deviceList"></div>
+  </div>
+
+  <!-- نافذة تسمية الجهاز وخيارات الفصل -->
+  <div class="modal-backdrop" id="editModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modalTitle">تسمية الجهاز وخيارات الفصل</h3>
+        <button class="btn-small" onclick="closeModals()">إغلاق ✕</button>
+      </div>
+      <input type="text" class="search-input" id="customNameInput" placeholder="اكتب اسم الجهاز (مثلاً: جوال أحمد)" />
+      <div class="preset-chips">
+        <span class="preset-chip" onclick="setQuickName('جوال أبي', true)">جوال أبي</span>
+        <span class="preset-chip" onclick="setQuickName('جوال أمي', true)">جوال أمي</span>
+        <span class="preset-chip" onclick="setQuickName('جوال أخي', true)">جوال أخي</span>
+        <span class="preset-chip" onclick="setQuickName('تلفزيون الصالة', true)">تلفزيون الصالة</span>
+        <span class="preset-chip" onclick="setQuickName('بلايستيشن', true)">بلايستيشن</span>
+        <span class="preset-chip" onclick="setQuickName('جهاز غريب!', false)">جهاز غريب!</span>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="trustedCheckbox" style="width:18px;height:18px;" />
+        <span>جهاز موثوق من العائلة (لا يُفصل مع الغرباء)</span>
+      </label>
+      <button class="scan-btn" onclick="saveDeviceEdit()">✓ حفظ اسم وتصنيف الجهاز</button>
+    </div>
+  </div>
+
+  <!-- نافذة حظر الراوتر الذكية -->
+  <div class="modal-backdrop" id="routerModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>📡 لوحة حظر الراوتر الذكية</h3>
+        <button class="btn-small" onclick="closeModals()">إغلاق ✕</button>
+      </div>
+      <p id="routerTargetInfo" style="font-size:13px;color:var(--coral-bright);margin-bottom:10px;font-weight:700;"></p>
+      <div style="background:var(--deep-navy);padding:12px;border-radius:14px;font-size:13px;line-height:1.7;margin-bottom:12px;">
+        <div style="color:var(--sky);font-weight:700;">خطوات الحظر النهائي بضغطة واحدة:</div>
+        <div>١. تم نسخ عنوان الـ MAC الخاص بالجهاز تلقائياً إلى الحافظة.</div>
+        <div>٢. في تطبيق الأندرويد تفتح صفحة الراوتر (192.168.1.1) داخل التطبيق مع زر «تعبئة الدخول تلقائياً» وزر «لصق الماك في قائمة الحظر».</div>
+      </div>
+      <button class="scan-btn" onclick="closeModals()">تم الفهم ✓</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toastBox"></div>
+
+  <script>
+    let currentTab = 'ALL';
+    let editingDeviceIp = null;
+
+    const devices = [
+      {
+        ip: '192.168.1.102',
+        mac: 'F0:18:98:4A:91:C2',
+        defaultName: 'آيفون 15 برو',
+        customName: '',
+        vendor: 'آبل (Apple)',
+        typeLabel: 'هاتف ذكي',
+        emoji: '📱',
+        ping: 14,
+        isBlocked: false,
+        blockMethod: '',
+        isTrusted: false,
+        isGateway: false,
+        isSelf: false
+      },
+      {
+        ip: '192.168.1.108',
+        mac: '64:CC:2E:81:55:19',
+        defaultName: 'هاتف شاومي ريدمي',
+        customName: '',
+        vendor: 'شاومي (Xiaomi)',
+        typeLabel: 'هاتف ذكي',
+        emoji: '📱',
+        ping: 27,
+        isBlocked: false,
+        blockMethod: '',
+        isTrusted: false,
+        isGateway: false,
+        isSelf: false
+      },
+      {
+        ip: '192.168.1.114',
+        mac: '50:01:D9:3B:12:88',
+        defaultName: 'سامسونج جالاكسي S23',
+        customName: 'جوال أبي',
+        vendor: 'سامسونج (Samsung)',
+        typeLabel: 'هاتف ذكي',
+        emoji: '📱',
+        ping: 11,
+        isBlocked: false,
+        blockMethod: '',
+        isTrusted: true,
+        isGateway: false,
+        isSelf: false
+      },
+      {
+        ip: '192.168.1.120',
+        mac: 'A8:23:FE:90:14:77',
+        defaultName: 'تلفزيون LG الذكي',
+        customName: 'تلفزيون الصالة',
+        vendor: 'إل جي (LG)',
+        typeLabel: 'تلفزيون ذكي',
+        emoji: '📺',
+        ping: 18,
+        isBlocked: false,
+        blockMethod: '',
+        isTrusted: true,
+        isGateway: false,
+        isSelf: false
+      },
+      {
+        ip: '192.168.1.131',
+        mac: '3C:97:0E:52:B0:44',
+        defaultName: 'لابتوب ويندوز',
+        customName: '',
+        vendor: 'إنتل (Windows PC)',
+        typeLabel: 'كمبيوتر / لابتوب',
+        emoji: '💻',
+        ping: 33,
+        isBlocked: false,
+        blockMethod: '',
+        isTrusted: false,
+        isGateway: false,
+        isSelf: false
+      },
+      {
+        ip: '192.168.1.1',
+        mac: '88:28:B3:01:00:01',
+        defaultName: 'الراوتر الأساسي (بوابة الشبكة)',
+        customName: '',
+        vendor: 'هواوي فايبر (Huawei)',
+        typeLabel: 'الراوتر الأساسي',
+        emoji: '📡',
+        ping: 2,
+        isBlocked: false,
+        blockMethod: '',
+        isTrusted: true,
+        isGateway: true,
+        isSelf: false
+      },
+      {
+        ip: '192.168.1.105',
+        mac: 'B8:BC:5B:99:20:01',
+        defaultName: 'هذا الهاتف (جهازك الحالي)',
+        customName: '',
+        vendor: 'أندرويد',
+        typeLabel: 'جهازك الحالي',
+        emoji: '🛡️',
+        ping: 1,
+        isBlocked: false,
+        blockMethod: '',
+        isTrusted: true,
+        isGateway: false,
+        isSelf: true
+      }
+    ];
+
+    function displayName(d) {
+      return (d.customName && d.customName.trim()) ? d.customName.trim() : d.defaultName;
+    }
+
+    function isStranger(d) {
+      return !d.isGateway && !d.isSelf && !d.isTrusted;
+    }
+
+    function showToast(msg) {
+      const box = document.getElementById('toastBox');
+      box.textContent = msg;
+      box.style.display = 'block';
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => {
+        box.style.display = 'none';
+      }, 3000);
+    }
+
+    function toggleCut(ip) {
+      const dev = devices.find(d => d.ip === ip);
+      if (!dev || dev.isGateway || dev.isSelf) return;
+      dev.isBlocked = !dev.isBlocked;
+      dev.blockMethod = dev.isBlocked ? 'مفصول فوراً ⛔' : '';
+      showToast(dev.isBlocked
+        ? `تم فصل الاتصال عن «${displayName(dev)}» بنجاح ✂️`
+        : `تمت إعادة الاتصال لـ «${displayName(dev)}» ✓`);
+      renderAll();
+    }
+
+    function cutAllStrangers() {
+      let count = 0;
+      devices.forEach(d => {
+        if (isStranger(d) && !d.isBlocked) {
+          d.isBlocked = true;
+          d.blockMethod = 'فصل جماعي للغرباء ⛔';
+          count++;
+        }
+      });
+      showToast(`تم فصل الاتصال عن ${count} أجهزة غريبة بضغطة واحدة ✂️`);
+      renderAll();
+    }
+
+    function reconnectAll() {
+      let count = 0;
+      devices.forEach(d => {
+        if (d.isBlocked) {
+          d.isBlocked = false;
+          d.blockMethod = '';
+          count++;
+        }
+      });
+      showToast(`تمت إعادة الاتصال لجميع الأجهزة (${count}) ✓`);
+      renderAll();
+    }
+
+    function triggerScan() {
+      const btn = document.getElementById('scanBtn');
+      const barBg = document.getElementById('progressBarBg');
+      const barFill = document.getElementById('progressBarFill');
+      const status = document.getElementById('statusText');
+
+      btn.disabled = true;
+      barBg.style.display = 'block';
+      let pct = 5;
+      barFill.style.width = pct + '%';
+      status.textContent = 'جاري فحص عناوين الشبكة (192.168.1.1 - 254)...';
+
+      const timer = setInterval(() => {
+        pct += 19;
+        if (pct >= 100) {
+          clearInterval(timer);
+          barFill.style.width = '100%';
+          setTimeout(() => {
+            barBg.style.display = 'none';
+            btn.disabled = false;
+            renderAll();
+            showToast('اكتمل الفحص — تم تحديث قائمة المتصلين بالشبكة ✓');
+          }, 250);
+        } else {
+          barFill.style.width = pct + '%';
+          status.textContent = `جاري فحص الشبكة واكتشاف الأجهزة (${pct}%)...`;
+        }
+      }, 180);
+    }
+
+    function openEditModal(ip) {
+      const dev = devices.find(d => d.ip === ip);
+      if (!dev) return;
+      editingDeviceIp = ip;
+      document.getElementById('modalTitle').textContent = `${dev.emoji} ${displayName(dev)}`;
+      document.getElementById('customNameInput').value = dev.customName || '';
+      document.getElementById('trustedCheckbox').checked = !!dev.isTrusted;
+      document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function setQuickName(name, trusted) {
+      document.getElementById('customNameInput').value = name;
+      document.getElementById('trustedCheckbox').checked = trusted;
+    }
+
+    function saveDeviceEdit() {
+      const dev = devices.find(d => d.ip === editingDeviceIp);
+      if (dev) {
+        dev.customName = document.getElementById('customNameInput').value.trim();
+        dev.isTrusted = document.getElementById('trustedCheckbox').checked;
+        showToast(`تم حفظ اسم وتصنيف «${displayName(dev)}» ✓`);
+      }
+      closeModals();
+      renderAll();
+    }
+
+    function openRouterModal(ip) {
+      const dev = ip ? devices.find(d => d.ip === ip) : null;
+      const info = document.getElementById('routerTargetInfo');
+      if (dev) {
+        dev.isBlocked = true;
+        dev.blockMethod = 'مفصول + حظر من الراوتر ⛔';
+        navigator.clipboard?.writeText(dev.mac).catch(() => {});
+        info.textContent = `الجهاز المستهدف بالحظر: ${displayName(dev)} (MAC: ${dev.mac})`;
+      } else {
+        info.textContent = 'بوابة الراوتر الافتراضية: http://192.168.1.1';
+      }
+      document.getElementById('routerModal').style.display = 'flex';
+      renderAll();
+    }
+
+    function closeModals() {
+      document.getElementById('editModal').style.display = 'none';
+      document.getElementById('routerModal').style.display = 'none';
+    }
+
+    function selectTab(tab) {
+      currentTab = tab;
+      renderAll();
+    }
+
+    function renderAll() {
+      const connectedCount = devices.filter(d => !d.isBlocked).length;
+      const blockedCount = devices.filter(d => d.isBlocked).length;
+      const strangersActive = devices.filter(d => isStranger(d) && !d.isBlocked).length;
+      const strangersTotal = devices.filter(d => isStranger(d)).length;
+
+      document.getElementById('statConnected').textContent = connectedCount;
+      document.getElementById('statBlocked').textContent = blockedCount;
+      document.getElementById('statStrangers').textContent = strangersActive;
+
+      document.getElementById('statusText').textContent =
+        blockedCount > 0
+          ? `متصل الآن: ${connectedCount} أجهزة · مفصول: ${blockedCount}`
+          : `متصل بالشبكة الآن: ${connectedCount} أجهزة`;
+
+      // أزرار التحكم الجماعي
+      const batchRow = document.getElementById('batchRow');
+      let batchHtml = '';
+      if (strangersActive > 0) {
+        batchHtml += `<div class="batch-btn batch-cut" onclick="cutAllStrangers()">✂️ فصل كل الغرباء بضغطة (${strangersActive})</div>`;
+      }
+      if (blockedCount > 0) {
+        batchHtml += `<div class="batch-btn batch-restore" onclick="reconnectAll()">↺ إعادة الاتصال للجميع (${blockedCount})</div>`;
+      }
+      batchRow.innerHTML = batchHtml;
+      batchRow.style.display = batchHtml ? 'flex' : 'none';
+
+      // التبويبات
+      const tabs = [
+        { id: 'ALL', label: `الكل (${devices.length})` },
+        { id: 'CONNECTED', label: `متصل الآن (${connectedCount})` },
+        { id: 'BLOCKED', label: `مفصول ⛔ (${blockedCount})` },
+        { id: 'STRANGERS', label: `غرباء ⚠️ (${strangersTotal})` },
+      ];
+      document.getElementById('tabsRow').innerHTML = tabs.map(t =>
+        `<button class="tab-chip ${currentTab === t.id ? 'active' : ''}" onclick="selectTab('${t.id}')">${t.label}</button>`
+      ).join('');
+
+      // تصفية وترتيب القائمة
+      const q = document.getElementById('searchInput').value.trim().toLowerCase();
+      const filtered = devices.filter(d => {
+        if (currentTab === 'CONNECTED' && d.isBlocked) return false;
+        if (currentTab === 'BLOCKED' && !d.isBlocked) return false;
+        if (currentTab === 'STRANGERS' && !isStranger(d)) return false;
+        if (!q) return true;
+        return displayName(d).toLowerCase().includes(q) ||
+               d.vendor.toLowerCase().includes(q) ||
+               d.ip.includes(q) ||
+               d.mac.toLowerCase().includes(q);
+      });
+
+      const listEl = document.getElementById('deviceList');
+      listEl.innerHTML = filtered.map(d => {
+        const cardClass = d.isBlocked
+          ? 'device-card blocked'
+          : (d.isGateway || d.isSelf)
+          ? 'device-card system-node'
+          : isStranger(d)
+          ? 'device-card stranger'
+          : 'device-card';
+
+        let badgeHtml = '';
+        if (d.isBlocked) badgeHtml = `<span class="badge blocked">مفصول ⛔</span>`;
+        else if (d.isGateway) badgeHtml = `<span class="badge router">الراوتر 📡</span>`;
+        else if (d.isSelf) badgeHtml = `<span class="badge trusted">هاتفك 🛡️</span>`;
+        else if (d.isTrusted) badgeHtml = `<span class="badge trusted">موثوق ✓</span>`;
+        else badgeHtml = `<span class="badge stranger">غريب ⚠️</span>`;
+
+        const actionsHtml = (!d.isGateway && !d.isSelf) ? `
+          <div class="dev-actions">
+            <button class="btn-cut-main ${d.isBlocked ? 'reconnect' : ''}" onclick="toggleCut('${d.ip}')">
+              ${d.isBlocked ? '↺ إعادة الاتصال الآن' : '✂️ فصل الاتصال فوراً'}
+            </button>
+            <button class="btn-sec amber" onclick="openRouterModal('${d.ip}')">حظر راوتر</button>
+            <button class="btn-sec" onclick="openEditModal('${d.ip}')">تسمية</button>
+          </div>
+        ` : '';
+
+        return `
+          <div class="${cardClass}">
+            <div class="dev-top">
+              <div class="dev-identity">
+                <div class="dev-icon">${d.isBlocked ? '⛔' : d.emoji}</div>
+                <div>
+                  <div class="dev-title">${displayName(d)}</div>
+                  <div class="dev-sub">${d.vendor} · ${d.typeLabel}</div>
+                </div>
+              </div>
+              ${badgeHtml}
+            </div>
+            <div class="dev-meta">
+              <span class="ip">IP: ${d.ip}</span>
+              <span class="mac">MAC: ${d.mac}</span>
+              <span class="ping">${d.isBlocked ? '0 KB/s' : d.ping + 'ms ⚡'}</span>
+            </div>
+            ${d.isBlocked ? `<div class="blocked-note">الحالة: ${d.blockMethod} — لا يمكنه استخدام الشبكة حالياً</div>` : ''}
+            ${actionsHtml}
+          </div>
+        `;
+      }).join('');
+    }
+
+    renderAll();
+  </script>
+</body>
+</html>
