@@ -1,0 +1,80 @@
+name: Build حارس الشبكة APK
+
+on:
+  push:
+    paths:
+      - "haris-wifi/**"
+      - ".github/workflows/build-haris-apk.yml"
+  workflow_dispatch:
+    inputs:
+      commit_apk:
+        description: "حفظ ملف APK داخل المستودع (مجلد dist)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: بناء ملف APK حارس الشبكة
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: تنزيل المستودع
+        uses: actions/checkout@v4
+
+      - name: تجهيز Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: تجهيز Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: بناء نسخة التطوير
+        id: gradle_build
+        continue-on-error: true
+        working-directory: haris-wifi
+        run: |
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace assembleDebug 2>&1 | tee build.log
+
+      - name: حفظ سجل البناء عند الفشل
+        if: steps.gradle_build.outcome != 'success'
+        run: |
+          git config user.name "haris-build-bot"
+          git config user.email "haris-build-bot@users.noreply.github.com"
+          mkdir -p ci-logs
+          cp haris-wifi/build.log ci-logs/haris-last-build.log
+          grep -nE "e: file|e: |error:|FAILURE|What went wrong|Caused by|Unresolved|FAILED" haris-wifi/build.log > ci-logs/haris-errors.txt || true
+          git add -f ci-logs
+          git commit -m "ci: سجل بناء حارس الشبكة فاشل [skip ci]" || echo "لا تغييرات"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: رفع ملف APK
+        if: steps.gradle_build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: haris-wifi-apk
+          path: haris-wifi/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: حفظ APK في المستودع
+        if: steps.gradle_build.outcome == 'success' && (inputs.commit_apk == true || contains(github.event.head_commit.message, '[save-apk]'))
+        run: |
+          git config user.name "haris-build-bot"
+          git config user.email "haris-build-bot@users.noreply.github.com"
+          mkdir -p dist
+          cp haris-wifi/app/build/outputs/apk/debug/app-debug.apk dist/haris-wifi-1.0.0-debug.apk
+          git add -f dist/haris-wifi-1.0.0-debug.apk
+          git commit -m "build: APK حارس الشبكة 1.0.0 [skip ci]" || echo "لا تغييرات"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: إيقاف عند الفشل
+        if: steps.gradle_build.outcome != 'success'
+        run: exit 1
