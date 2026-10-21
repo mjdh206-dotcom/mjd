@@ -156,12 +156,17 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
             networkInfo = info
 
             val savedMeta = store.loadAllMeta()
+            val liveList = java.util.concurrent.ConcurrentHashMap<String, ConnectedDevice>()
             val found = scanner.scanSubnet(
                 netInfo = info,
                 savedMeta = savedMeta,
                 routerUser = "admin",
                 routerPass = routerPassword,
                 deepCameraScan = deepCameraScan,
+                onDeviceFound = { newDev ->
+                    liveList[newDev.ip] = newDev
+                    devices = scanner.sortDevices(liveList.values.toList())
+                },
                 onProgress = { progress, text ->
                     scanProgress = progress
                     scanStatusText = text

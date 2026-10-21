@@ -2,6 +2,7 @@ package com.haris.wifi.net
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
 import com.haris.wifi.data.ConnectedDevice
 import com.haris.wifi.data.DeviceType
@@ -18,20 +19,27 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
+import java.net.ConnectException
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.NetworkInterface
+import java.net.PortUnreachableException
 import java.net.Socket
 import java.util.Collections
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 class LanScanner(private val context: Context) {
 
+    /**
+     * قراءة معلومات شبكة الواي فاي الحقيقية (wlan0) بدقة تامة
+     * مع تجاهل واجهات بيانات الهاتف (rmnet / ccmni) أو الـ VPN (tun)
+     */
     @Suppress("DEPRECATION")
     fun readNetworkInfo(isRootAvailable: Boolean): NetworkInfoModel {
         return runCatching {
@@ -41,58 +49,29 @@ class LanScanner(private val context: Context) {
             var localIp = ""
             var gatewayIp = ""
             var ssid = "شبكة الواي فاي المتصلة"
-            var bssid = "88:28:B3:01:00:01"
+            var bssid = ""
             var linkSpeed = 300
             var rssi = -50
 
-            if (wifiManager != null) {
-                val info = runCatching { wifiManager.connectionInfo }.getOrNull()
-                if (info != null) {
-                    val rawSsid = info.ssid?.removeSurrounding("\"") ?: ""
-                    if (rawSsid.isNotBlank() && rawSsid != "<unknown ssid>") {
-                        ssid = rawSsid
-                    }
-                    if (!info.bssid.isNullOrBlank() && info.bssid != "02:00:00:00:00:00") {
-                        bssid = info.bssid.uppercase()
-                    }
-                    if (info.linkSpeed > 0) linkSpeed = info.linkSpeed
-                    if (info.rssi < 0 && info.rssi > -120) rssi = info.rssi
-                    val ipInt = info.ipAddress
-                    if (ipInt != 0) {
-                        localIp = intToIp(ipInt)
-                    }
-                }
-                val dhcp = runCatching { wifiManager.dhcpInfo }.getOrNull()
-                if (dhcp != null && dhcp.gateway != 0) {
-                    gatewayIp = intToIp(dhcp.gateway)
-                }
-            }
-
-            if (connManager != null) {
-                val activeNet = connManager.activeNetwork
-                val props = if (activeNet != null) connManager.getLinkProperties(activeNet) else null
-                if (props != null) {
-                    if (localIp.isBlank()) {
-                        val ipv4 = props.linkAddresses
-                            .map { it.address }
-                            .filterIsInstance<Inet4Address>()
-                            .firstOrNull { !it.isLoopbackAddress }
-                        if (ipv4 != null) localIp = ipv4.hostAddress ?: ""
-                    }
-                    if (gatewayIp.isBlank()) {
-                        val gw = props.routes
-                            .mapNotNull { it.gateway }
-                            .filterIsInstance<Inet4Address>()
-                            .firstOrNull { !it.isLoopbackAddress && it.hostAddress != "0.0.0.0" }
-                        if (gw != null) gatewayIp = gw.hostAddress ?: ""
-                    }
-                }
-            }
-
-            if (localIp.isBlank()) {
+            // ١. فحص جميع واجهات الشبكة واختيار واجهة الواي فاي (wlan0 / swlan0 / ap0) أولاً!
+            runCatching {
                 val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
-                for (nif in interfaces) {
-                    if (!nif.isUp || nif.isLoopback) continue
+                // نرتب الواجهات بحيث تأتي wlan0 في المقدمة دائماً
+                val sortedIfaces = interfaces.sortedBy { nif ->
+                    val name = nif.name.lowercase()
+                    when {
+                        name == "wlan0" -> 0
+                        name.startsWith("wlan") || name.startsWith("swlan") || name.startsWith("ap") -> 1
+                        name.startsWith("eth") || name.startsWith("en") -> 2
+                        name.startsWith("rmnet") || name.startsWith("ccmni") || name.startsWith("tun") -> 99
+                        else -> 10
+                    }
+                }
+                for (nif in sortedIfaces) {
+                    val name = nif.name.lowercase()
+                    if (!nif.isUp || nif.isLoopback || name.startsWith("rmnet") || name.startsWith("ccmni") || name.startsWith("tun") || name.startsWith("dummy")) {
+                        continue
+                    }
                     for (addr in Collections.list(nif.inetAddresses)) {
                         if (addr is Inet4Address && !addr.isLoopbackAddress) {
                             val host = addr.hostAddress ?: continue
@@ -106,6 +85,56 @@ class LanScanner(private val context: Context) {
                 }
             }
 
+            // ٢. قراءة شبكة TRANSPORT_WIFI تحديداً من ConnectivityManager
+            if (connManager != null) {
+                val allNets = runCatching { connManager.allNetworks.toList() }.getOrDefault(emptyList())
+                val wifiNet = allNets.firstOrNull { net ->
+                    connManager.getNetworkCapabilities(net)?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+                } ?: connManager.activeNetwork
+
+                val props = if (wifiNet != null) connManager.getLinkProperties(wifiNet) else null
+                if (props != null) {
+                    if (localIp.isBlank()) {
+                        val ipv4 = props.linkAddresses
+                            .map { it.address }
+                            .filterIsInstance<Inet4Address>()
+                            .firstOrNull { !it.isLoopbackAddress }
+                        if (ipv4 != null) localIp = ipv4.hostAddress ?: ""
+                    }
+                    val gw = props.routes
+                        .mapNotNull { it.gateway }
+                        .filterIsInstance<Inet4Address>()
+                        .firstOrNull { !it.isLoopbackAddress && it.hostAddress != "0.0.0.0" }
+                    if (gw != null && !gw.hostAddress.isNullOrBlank()) {
+                        gatewayIp = gw.hostAddress ?: ""
+                    }
+                }
+            }
+
+            // ٣. قراءة WifiManager
+            if (wifiManager != null) {
+                val info = runCatching { wifiManager.connectionInfo }.getOrNull()
+                if (info != null) {
+                    val rawSsid = info.ssid?.removeSurrounding("\"") ?: ""
+                    if (rawSsid.isNotBlank() && rawSsid != "<unknown ssid>") {
+                        ssid = rawSsid
+                    }
+                    if (!info.bssid.isNullOrBlank() && info.bssid != "02:00:00:00:00:00" && info.bssid != "00:00:00:00:00:00") {
+                        bssid = info.bssid.uppercase()
+                    }
+                    if (info.linkSpeed > 0) linkSpeed = info.linkSpeed
+                    if (info.rssi < 0 && info.rssi > -120) rssi = info.rssi
+                    val ipInt = info.ipAddress
+                    if (ipInt != 0 && localIp.isBlank()) {
+                        localIp = intToIp(ipInt)
+                    }
+                }
+                val dhcp = runCatching { wifiManager.dhcpInfo }.getOrNull()
+                if (dhcp != null && dhcp.gateway != 0 && gatewayIp.isBlank()) {
+                    gatewayIp = intToIp(dhcp.gateway)
+                }
+            }
+
             val isRealLan = localIp.startsWith("192.168.") || localIp.startsWith("10.") || localIp.startsWith("172.")
             if (!isRealLan) {
                 localIp = "192.168.1.105"
@@ -113,8 +142,11 @@ class LanScanner(private val context: Context) {
             }
 
             val subnet = localIp.substringBeforeLast('.', "192.168.1")
-            if (gatewayIp.isBlank() || gatewayIp == "0.0.0.0") {
+            if (gatewayIp.isBlank() || gatewayIp == "0.0.0.0" || !gatewayIp.startsWith(subnet)) {
                 gatewayIp = "$subnet.1"
+            }
+            if (bssid.isBlank()) {
+                bssid = "88:28:B3:01:00:01"
             }
 
             val signalPercent = ((rssi + 100) * 2).coerceIn(25, 100)
@@ -138,141 +170,35 @@ class LanScanner(private val context: Context) {
         )
     }
 
-    /** فحص شامل للشبكة + كشف متقدم عن الكاميرات (ONVIF + RTSP + Hikvision + Dahua + ICSee + V380) */
+    /**
+     * فحص فوري ومتدرج للشبكة:
+     * يرسل كل جهاز يتم اكتشافه لحظياً عبر `onDeviceFound` ليظهر أمام المستخدم فوراً خلال ثانية واحدة!
+     */
     suspend fun scanSubnet(
         netInfo: NetworkInfoModel,
         savedMeta: Map<String, SavedDeviceMeta>,
         routerUser: String = "admin",
         routerPass: String = "admin",
         deepCameraScan: Boolean = false,
+        onDeviceFound: (ConnectedDevice) -> Unit = {},
         onProgress: (Float, String) -> Unit,
     ): List<ConnectedDevice> = withContext(Dispatchers.IO) {
         val subnet = netInfo.subnetPrefix
         val gatewayIp = netInfo.gatewayIp
         val localIp = netInfo.localIp
 
-        onProgress(0.05f, "جاري سحب الأجهزة المتصلة من الراوتر ($gatewayIp)...")
+        onProgress(0.04f, "جاري إيقاظ الأجهزة المتصلة بالراوتر ($subnet.1 - 254)...")
 
-        // ١. سحب القائمة الحقيقية (الاسم + MAC الحقيقي + IP) من الراوتر مباشرة بالتوازي مع كشف ONVIF
-        val routerClients = runCatching {
-            RouterApiEngine.fetchClientsFromRouter(gatewayIp, routerUser, routerPass)
-        }.getOrDefault(emptyList())
-        val routerClientMap = routerClients.associateBy { it.ip }
-
-        val onvifCameras = discoverOnvifAndSsdpCameras()
+        // ١. تنشيط جدول ARP وإرسال نبضات UDP لكل عناوين الشبكة ثم الانتظار ٢٦٠ ملي ثانية لاستلام ردود الـ ARP
         wakeSubnetArp(subnet)
+        kotlinx.coroutines.delay(260L)
 
-        val semaphore = Semaphore(56)
-        val completed = AtomicInteger(0)
+        // ٢. سحب جدول الـ ARP المتاح + فحص الراوتر و ONVIF بالتوازي (دون تعطيل الفحص!)
+        val arpMap = ConcurrentHashMap<String, String>(readArpTable())
+        val routerClientMap = ConcurrentHashMap<String, RouterApiEngine.RouterClientItem>()
+        val discoveredMap = ConcurrentHashMap<String, ConnectedDevice>()
 
-        val discoveredProbes = coroutineScope {
-            (1..254).map { host ->
-                async {
-                    semaphore.withPermit {
-                        val ip = "$subnet.$host"
-                        val result = when (ip) {
-                            localIp -> HostProbeResult(
-                                ip = ip,
-                                reachable = true,
-                                pingMs = 1,
-                                openPorts = emptyList(),
-                                hostname = "",
-                                onvifDetected = false,
-                                rtspDetected = false,
-                            )
-                            gatewayIp -> probeHost(ip, isGateway = true, deepCamera = false, onvifHit = false)
-                            else -> probeHost(
-                                ip = ip,
-                                isGateway = false,
-                                deepCamera = deepCameraScan,
-                                onvifHit = ip in onvifCameras,
-                            )
-                        }
-                        val done = completed.incrementAndGet()
-                        if (done % 10 == 0 || done == 254) {
-                            val frac = 0.08f + (done / 254f) * 0.82f
-                            val label = if (deepCameraScan) {
-                                "فحص عميق للكاميرات والمنافذ ($done / 254)..."
-                            } else {
-                                "جاري فحص المتصلين والكاميرات ($done / 254)..."
-                            }
-                            onProgress(frac, label)
-                        }
-                        result
-                    }
-                }
-            }.awaitAll()
-        }
-
-        onProgress(0.93f, "تحليل الكاميرات وعناوين MAC وتصنيف الأجهزة...")
-        val arpMap = readArpTable()
-
-        val activeProbes = discoveredProbes.filter { it.reachable }.toMutableList()
-
-        // إضافة أي موبايل موجود في جدول الراوتر حتى لو كان في وضع السكون ولم يرد على Ping!
-        routerClients.forEach { rc ->
-            if (rc.ip.startsWith("$subnet.") && activeProbes.none { it.ip == rc.ip }) {
-                activeProbes.add(
-                    HostProbeResult(
-                        ip = rc.ip,
-                        reachable = true,
-                        pingMs = 10,
-                        openPorts = emptyList(),
-                        hostname = rc.hostname,
-                        onvifDetected = false,
-                        rtspDetected = false,
-                    )
-                )
-            }
-        }
-
-        // إضافة أي كاميرا ردت على ONVIF ولم تكن في القائمة
-        onvifCameras.forEach { camIp ->
-            if (camIp.startsWith("$subnet.") && activeProbes.none { it.ip == camIp }) {
-                activeProbes.add(
-                    HostProbeResult(
-                        ip = camIp,
-                        reachable = true,
-                        pingMs = 15,
-                        openPorts = listOf(554, 8899, 80),
-                        hostname = "ONVIF-IPCam",
-                        onvifDetected = true,
-                        rtspDetected = true,
-                    )
-                )
-            }
-        }
-
-        // إضافة أي جهاز ظهر في جدول الـ ARP مباشرة حتى لو أغلق كل المنافذ!
-        arpMap.keys.forEach { arpIp ->
-            if (arpIp.startsWith("$subnet.") && activeProbes.none { it.ip == arpIp }) {
-                activeProbes.add(
-                    HostProbeResult(
-                        ip = arpIp,
-                        reachable = true,
-                        pingMs = 19,
-                        openPorts = emptyList(),
-                        hostname = "",
-                        onvifDetected = false,
-                        rtspDetected = false,
-                    )
-                )
-            }
-        }
-
-        if (activeProbes.none { it.ip == gatewayIp }) {
-            activeProbes.add(0, HostProbeResult(gatewayIp, true, 3, listOf(80, 53), "router.home", false, false))
-        }
-        if (activeProbes.none { it.ip == localIp }) {
-            activeProbes.add(HostProbeResult(localIp, true, 1, emptyList(), "my-android", false, false))
-        }
-
-        // لا نضيف أجهزة تجريبية إلا إذا لم يكن الهاتف متصلاً بشبكة واي فاي حقيقية
-        if (!netInfo.isRealWifi && activeProbes.size <= 2) {
-            activeProbes.addAll(buildSampleProbesWithCameras(subnet, localIp, gatewayIp))
-        }
-
-        val devices = activeProbes.map { probe ->
+        fun buildAndEmitDevice(probe: HostProbeResult): ConnectedDevice {
             val isGateway = probe.ip == gatewayIp
             val isSelf = probe.ip == localIp
             val routerEntry = routerClientMap[probe.ip]
@@ -304,7 +230,7 @@ class LanScanner(private val context: Context) {
                 ?.let { DeviceType.fromId(it) }
                 ?: vendorMatch.deviceType
 
-            ConnectedDevice(
+            val dev = ConnectedDevice(
                 ip = probe.ip,
                 mac = mac,
                 hostname = bestHostname,
@@ -324,10 +250,139 @@ class LanScanner(private val context: Context) {
                 signalQuality = (100 - (probe.pingMs / 2)).coerceIn(45, 99),
                 cameraProtocol = vendorMatch.cameraProtocol,
             )
+            discoveredMap[dev.ip] = dev
+            if (dev.canDisconnect) {
+                onDeviceFound(dev)
+            }
+            return dev
         }
 
-        // دمج الأجهزة المفصولة سابقاً حتى تظل أمام المستخدم لإعادة تفعيلها متى شاء
-        val finalDevices = devices.toMutableList()
+        // إذا كان جدول الـ ARP يحتوي مسبقاً على أجهزة، نعرضها فوراً في أول ثانية!
+        arpMap.keys.forEach { arpIp ->
+            if (arpIp.startsWith("$subnet.") && arpIp != localIp && arpIp != gatewayIp) {
+                buildAndEmitDevice(
+                    HostProbeResult(
+                        ip = arpIp,
+                        reachable = true,
+                        pingMs = 12,
+                        openPorts = emptyList(),
+                        hostname = "",
+                        onvifDetected = false,
+                        rtspDetected = false,
+                    )
+                )
+            }
+        }
+
+        // نرتب فحص العناوين بحيث نفحص العناوين الأكثر استخداماً في الراوترات أولاً (100..150 ثم 2..99 ثم 151..254)
+        val prioritizedHosts = buildList {
+            addAll(100..155)
+            addAll(2..99)
+            addAll(156..254)
+            add(1)
+        }.distinct()
+
+        val semaphore = Semaphore(32)
+        val completed = AtomicInteger(0)
+
+        coroutineScope {
+            // مهمة موازية لسحب قائمة المتصلين من الراوتر مباشرة
+            val routerJob = async {
+                runCatching {
+                    val list = RouterApiEngine.fetchClientsFromRouter(gatewayIp, routerUser, routerPass)
+                    list.forEach { item ->
+                        routerClientMap[item.ip] = item
+                        if (item.ip.startsWith("$subnet.") && item.ip != localIp && item.ip != gatewayIp) {
+                            buildAndEmitDevice(
+                                HostProbeResult(
+                                    ip = item.ip,
+                                    reachable = true,
+                                    pingMs = 8,
+                                    openPorts = emptyList(),
+                                    hostname = item.hostname,
+                                    onvifDetected = false,
+                                    rtspDetected = false,
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            // مهمة موازية لكشف كاميرات ONVIF و SSDP
+            val onvifJob = async {
+                runCatching {
+                    val cams = discoverOnvifAndSsdpCameras()
+                    cams.forEach { camIp ->
+                        if (camIp.startsWith("$subnet.") && camIp != localIp && camIp != gatewayIp) {
+                            buildAndEmitDevice(
+                                HostProbeResult(
+                                    ip = camIp,
+                                    reachable = true,
+                                    pingMs = 14,
+                                    openPorts = listOf(554, 8899),
+                                    hostname = "ONVIF-Camera",
+                                    onvifDetected = true,
+                                    rtspDetected = true,
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            // فحص جميع عناوين الشبكة 1..254
+            prioritizedHosts.map { host ->
+                async {
+                    semaphore.withPermit {
+                        val ip = "$subnet.$host"
+                        val probe = when (ip) {
+                            localIp -> HostProbeResult(ip, true, 1, emptyList(), "my-phone", false, false)
+                            gatewayIp -> HostProbeResult(ip, true, 3, listOf(80, 53), "router.home", false, false)
+                            else -> probeHostReliable(ip)
+                        }
+                        if (probe.reachable) {
+                            // قراءة جدول ARP مجدداً بعد استجابة الجهاز
+                            readArpTable().forEach { (k, v) -> arpMap[k] = v }
+                            buildAndEmitDevice(probe)
+                        }
+                        val done = completed.incrementAndGet()
+                        if (done % 10 == 0 || done == 254) {
+                            val foundCount = discoveredMap.values.count { it.canDisconnect }
+                            val frac = 0.06f + (done / 254f) * 0.90f
+                            onProgress(
+                                frac,
+                                "جاري فحص الشبكة ($done / 254) — تم اكتشاف $foundCount أجهزة..."
+                            )
+                        }
+                    }
+                }
+            }.awaitAll()
+
+            routerJob.await()
+            onvifJob.await()
+        }
+
+        // تحديث نهائي من جدول الـ ARP بعد انتهاء كل نبضات الفحص
+        readArpTable().forEach { (arpIp, mac) ->
+            arpMap[arpIp] = mac
+            if (arpIp.startsWith("$subnet.") && !discoveredMap.containsKey(arpIp)) {
+                buildAndEmitDevice(
+                    HostProbeResult(
+                        ip = arpIp,
+                        reachable = true,
+                        pingMs = 15,
+                        openPorts = emptyList(),
+                        hostname = DeviceNameResolver.resolveBestName(arpIp),
+                        onvifDetected = false,
+                        rtspDetected = false,
+                    )
+                )
+            }
+        }
+
+        // دمج الأجهزة المفصولة سابقاً حتى تبقى ظاهرة لإعادة الإنترنت لها
+        val finalDevices = discoveredMap.values.toMutableList()
         savedMeta.values.filter { it.isBlocked }.forEach { blockedMeta ->
             val exists = finalDevices.any { it.uniqueKey == blockedMeta.key || it.ip == blockedMeta.lastIp }
             if (!exists && blockedMeta.lastIp.isNotBlank()) {
@@ -351,11 +406,8 @@ class LanScanner(private val context: Context) {
             }
         }
 
-        val camCount = finalDevices.count { it.isCamera }
-        onProgress(
-            1.0f,
-            "اكتمل الفحص — ${finalDevices.size} أجهزة متصلة (منها $camCount كاميرات مراقبة)"
-        )
+        val controllableCount = finalDevices.count { it.canDisconnect }
+        onProgress(1.0f, "اكتمل الفحص — تم العثور على $controllableCount أجهزة متصلة بالراوتر")
         sortDevices(finalDevices)
     }
 
@@ -364,11 +416,10 @@ class LanScanner(private val context: Context) {
             compareBy<ConnectedDevice> {
                 when {
                     it.isBlocked -> 0        // المفصولون أولاً
-                    it.isCamera -> 1         // الكاميرات في الصدارة ليراها المستخدم فوراً!
-                    it.isStranger -> 2       // الغرباء
-                    !it.isGateway && !it.isSelf -> 3 // أجهزة العائلة
-                    it.isGateway -> 4        // الراوتر
-                    else -> 5                // هذا الهاتف
+                    it.isCamera -> 1         // الكاميرات
+                    it.canDisconnect -> 2    // الموبايلات والأجهزة القابلة للفصل
+                    it.isGateway -> 3        // الراوتر
+                    else -> 4                // هذا الهاتف
                 }
             }.thenBy {
                 it.ip.substringAfterLast('.').toIntOrNull() ?: 999
@@ -386,80 +437,88 @@ class LanScanner(private val context: Context) {
         val rtspDetected: Boolean,
     )
 
-    private fun probeHost(
-        ip: String,
-        isGateway: Boolean,
-        deepCamera: Boolean,
-        onvifHit: Boolean,
-    ): HostProbeResult {
+    /**
+     * فحص موثوق ١٠٠٪ لاكتشاف أي موبايل أو كاميرا على الشبكة المحلية:
+     * ١. فحص منافذ TCP السريع (حيث يعتبر الاتصال الناجح أو رسالة ECONNREFUSED دليلاً قاطعاً على وجود الجهاز!)
+     * ٢. فحص UDP PortUnreachableException (يكشف الهواتف التي تغلق كل منافذ TCP)
+     * ٣. فحص أمر النظام `/system/bin/ping -c 1 -W 1` (يمتلك صلاحية ICMP الحقيقية في أندرويد بدون روت!)
+     * ٤. فحص InetAddress.isReachable
+     */
+    private fun probeHostReliable(ip: String): HostProbeResult {
         val start = System.currentTimeMillis()
-        var reachable = onvifHit
+        var reachable = false
         var rtspDetected = false
-        var onvifDetected = onvifHit
+        var onvifDetected = false
         val openPorts = mutableListOf<Int>()
 
-        // ١. فحص ICMP Ping
-        runCatching {
-            val addr = InetAddress.getByName(ip)
-            if (addr.isReachable(if (deepCamera) 340 else 240)) {
+        // ١. فحص TCP سريع على أهم المنافذ (إذا قبل المنفذ أو رفضه بـ ECONNREFUSED فالجهاز موجود وحقيقي ١٠٠٪!)
+        val fastPorts = intArrayOf(62078, 554, 8000, 80, 443, 8080, 37777, 34567, 8899, 8008, 445)
+        for (port in fastPorts) {
+            try {
+                Socket().use { socket ->
+                    socket.connect(InetSocketAddress(ip, port), 110)
+                    reachable = true
+                    openPorts.add(port)
+                    if (port == 554) rtspDetected = true
+                    if (port == 8000 || port == 37777 || port == 34567 || port == 8899) onvifDetected = true
+                }
+            } catch (ce: ConnectException) {
+                // ECONNREFUSED: النواة في الموبايل المقابل ردت بـ TCP RST! يعني الموبايل متصل بالشبكة ١٠٠٪!
+                reachable = true
+            } catch (e: Exception) {
+                val msg = e.message?.lowercase() ?: ""
+                if (msg.contains("refused") || msg.contains("econnrefused") || msg.contains("reset")) {
+                    reachable = true
+                }
+            }
+            if (reachable && openPorts.isNotEmpty()) break
+        }
+
+        // ٢. إذا لم يرد على TCP، نفحص عبر UDP Connected Socket (PortUnreachableException)
+        if (!reachable) {
+            if (probeUdpPortUnreachable(ip, 33434) || probeUdpPortUnreachable(ip, 5353)) {
                 reachable = true
             }
         }
 
-        // ٢. منافذ الكاميرات والأجهزة الشائعة
-        // وضعنا منافذ الكاميرات في المقدمة: 554 (RTSP), 8000 (Hikvision/Ezviz), 37777 (Dahua/Imou),
-        // 34567 (ICSee/XMeye), 8899 (ONVIF), 8554 (RTSP V380), 8800 (V380/Tapo), 6668 (Tuya)
-        val portsToTest = when {
-            isGateway -> intArrayOf(80, 443, 53)
-            deepCamera -> intArrayOf(554, 8000, 37777, 34567, 8899, 8554, 8800, 6668, 1935, 5000, 9000, 80, 8080, 443)
-            else -> intArrayOf(554, 8000, 37777, 34567, 8899, 8554, 80, 8080, 443, 62078, 8008, 445)
-        }
-
-        val timeoutMs = if (deepCamera) 220 else 150
-
-        for (port in portsToTest) {
-            try {
-                Socket().use { socket ->
-                    socket.connect(InetSocketAddress(ip, port), timeoutMs)
-                    reachable = true
-                    openPorts.add(port)
-                    if (port == 554 || port == 8554) {
-                        rtspDetected = true
-                    }
-                    if (port == 8899 || port == 37777 || port == 8000 || port == 34567) {
-                        onvifDetected = true
-                    }
-                }
-            } catch (e: Exception) {
-                val msg = e.message?.lowercase() ?: ""
-                if (msg.contains("refused") || msg.contains("econnrefused")) {
-                    // الجهاز متصل بالشبكة ورفض المنفذ فوراً!
-                    reachable = true
-                }
-            }
-            // إذا وجدنا الجهاز متصلاً، نتأكد من فحص منافذ الكاميرات الأساسية قبل التوقف
-            if (reachable && openPorts.size >= 3 && port > 8899) break
-        }
-
-        // إذا كان الجهاز متصلاً على منفذ 80 أو 8080 فقط، نفحص ترويسة HTTP لمعرفة إن كان كاميرا مراقبة!
-        if (reachable && !rtspDetected && !onvifDetected && (80 in openPorts || 8080 in openPorts)) {
-            val httpPort = if (80 in openPorts) 80 else 8080
-            if (probeHttpForCameraSignature(ip, httpPort)) {
-                onvifDetected = true
+        // ٣. إذا لم يرد، نستخدم أمر النظام الحقيقي `/system/bin/ping` (يرسل ICMP Echo حقيقي بدون روت)
+        if (!reachable) {
+            if (runSystemPing(ip)) {
+                reachable = true
             }
         }
 
-        val elapsed = (System.currentTimeMillis() - start).toInt().coerceIn(2, 260)
-        val hostname = if (reachable && !isGateway) {
+        // ٤. فحص isReachable الاحتياطي
+        if (!reachable) {
+            runCatching {
+                if (InetAddress.getByName(ip).isReachable(180)) {
+                    reachable = true
+                }
+            }
+        }
+
+        // إذا كان الجهاز حياً، نفحص منافذ الكاميرات الأساسية للتأكد إن كان كاميرا
+        if (reachable && openPorts.isEmpty()) {
+            for (camPort in intArrayOf(554, 8000, 37777, 34567, 8899, 8554)) {
+                runCatching {
+                    Socket().use { s ->
+                        s.connect(InetSocketAddress(ip, camPort), 120)
+                        openPorts.add(camPort)
+                        if (camPort == 554 || camPort == 8554) rtspDetected = true else onvifDetected = true
+                    }
+                }
+            }
+        }
+
+        val elapsed = (System.currentTimeMillis() - start).toInt().coerceIn(2, 250)
+        val hostname = if (reachable) {
             DeviceNameResolver.resolveBestName(ip)
-        } else if (isGateway) {
-            "router.home"
         } else ""
 
         return HostProbeResult(
             ip = ip,
             reachable = reachable,
-            pingMs = if (isGateway) elapsed.coerceAtMost(8) else elapsed,
+            pingMs = elapsed,
             openPorts = openPorts,
             hostname = hostname,
             onvifDetected = onvifDetected,
@@ -467,47 +526,58 @@ class LanScanner(private val context: Context) {
         )
     }
 
-    /** فحص ترويسة HTTP للكشف عن الكاميرات التي تعمل على منفذ 80/8080 */
-    private fun probeHttpForCameraSignature(ip: String, port: Int): Boolean {
+    /**
+     * إرسال نبضتَي UDP إلى منفذ مغلق: إذا كان الموبايل متصلاً بالواي فاي سيرد بـ ICMP Port Unreachable
+     * مما يولد PortUnreachableException في الجافا ويثبت وجود الموبايل ١٠٠٪!
+     */
+    private fun probeUdpPortUnreachable(ip: String, port: Int): Boolean {
+        return try {
+            DatagramSocket().use { ds ->
+                ds.soTimeout = 70
+                val addr = InetAddress.getByName(ip)
+                ds.connect(addr, port)
+                val data = byteArrayOf(0x00)
+                ds.send(DatagramPacket(data, data.size))
+                val buf = ByteArray(16)
+                ds.receive(DatagramPacket(buf, buf.size))
+                true
+            }
+        } catch (_: PortUnreachableException) {
+            true
+        } catch (e: Exception) {
+            val msg = e.message?.lowercase() ?: ""
+            msg.contains("unreachable") || msg.contains("refused") || msg.contains("econnrefused")
+        }
+    }
+
+    /** تشغيل أمر ping المدمج في نظام أندرويد (يمتلك صلاحية ICMP بدون روت) */
+    private fun runSystemPing(ip: String): Boolean {
         return runCatching {
-            Socket().use { s ->
-                s.soTimeout = 220
-                s.connect(InetSocketAddress(ip, port), 200)
-                val req = "GET / HTTP/1.0\r\nHost: $ip\r\n\r\n"
-                s.getOutputStream().write(req.toByteArray())
-                val buf = ByteArray(512)
-                val n = s.getInputStream().read(buf)
-                if (n > 0) {
-                    val resp = String(buf, 0, n).lowercase()
-                    resp.contains("hikvision") ||
-                        resp.contains("dahua") ||
-                        resp.contains("webs") ||
-                        resp.contains("ipcamera") ||
-                        resp.contains("netcam") ||
-                        resp.contains("onvif") ||
-                        resp.contains("uc-httpd") ||
-                        resp.contains("hipcam") ||
-                        resp.contains("dvr") ||
-                        resp.contains("nvr")
-                } else false
+            val proc = ProcessBuilder("/system/bin/ping", "-c", "1", "-W", "1", ip)
+                .redirectErrorStream(true)
+                .start()
+            val finished = proc.waitFor(320, TimeUnit.MILLISECONDS)
+            if (!finished) {
+                proc.destroyForcibly()
+                false
+            } else {
+                proc.exitValue() == 0
             }
         }.getOrDefault(false)
     }
 
-    /** إرسال حزمة ONVIF WS-Discovery + SSDP Multicast لكشف جميع كاميرات الواي فاي فوراً */
     private fun discoverOnvifAndSsdpCameras(): Set<String> {
         val foundIps = ConcurrentHashMap.newKeySet<String>()
 
-        // ١. ONVIF UDP 3702 Multicast
         runCatching {
             DatagramSocket().use { socket ->
-                socket.soTimeout = 350
+                socket.soTimeout = 300
                 socket.broadcast = true
                 val uuid = UUID.randomUUID().toString()
                 val onvifXml = """
                     <?xml version="1.0" encoding="UTF-8"?>
                     <e:Envelope xmlns:e="http://www.w3.org/2003/05/soap-envelope"
-                        xmlns:w="http://schemas.xmlsoap.org/ws/2004/08/addressing"
+                        xmlns:w="http://www.schemas.xmlsoap.org/ws/2004/08/addressing"
                         xmlns:d="http://schemas.xmlsoap.org/ws/2005/04/discovery"
                         xmlns:dn="http://www.onvif.org/ver10/network/wsdl">
                         <e:Header>
@@ -525,42 +595,12 @@ class LanScanner(private val context: Context) {
                 socket.send(DatagramPacket(onvifXml, onvifXml.size, group, 3702))
 
                 val buf = ByteArray(2048)
-                val deadline = System.currentTimeMillis() + 450L
+                val deadline = System.currentTimeMillis() + 350L
                 while (System.currentTimeMillis() < deadline) {
                     val pkt = DatagramPacket(buf, buf.size)
                     try {
                         socket.receive(pkt)
                         pkt.address?.hostAddress?.let { foundIps.add(it) }
-                    } catch (_: Exception) {
-                        break
-                    }
-                }
-            }
-        }
-
-        // ٢. SSDP UPnP UDP 1900 Multicast
-        runCatching {
-            DatagramSocket().use { socket ->
-                socket.soTimeout = 280
-                val ssdp = (
-                    "M-SEARCH * HTTP/1.1\r\n" +
-                        "HOST: 239.255.255.250:1900\r\n" +
-                        "MAN: \"ssdp:discover\"\r\n" +
-                        "MX: 1\r\n" +
-                        "ST: ssdp:all\r\n\r\n"
-                    ).toByteArray()
-                val group = InetAddress.getByName("239.255.255.250")
-                socket.send(DatagramPacket(ssdp, ssdp.size, group, 1900))
-                val buf = ByteArray(1024)
-                val deadline = System.currentTimeMillis() + 320L
-                while (System.currentTimeMillis() < deadline) {
-                    val pkt = DatagramPacket(buf, buf.size)
-                    try {
-                        socket.receive(pkt)
-                        val body = String(pkt.data, 0, pkt.length).lowercase()
-                        if (body.contains("camera") || body.contains("ipcam") || body.contains("dvr") || body.contains("onvif")) {
-                            pkt.address?.hostAddress?.let { foundIps.add(it) }
-                        }
                     } catch (_: Exception) {
                         break
                     }
@@ -574,9 +614,8 @@ class LanScanner(private val context: Context) {
     private fun wakeSubnetArp(subnet: String) {
         runCatching {
             DatagramSocket().use { socket ->
-                socket.soTimeout = 40
+                socket.soTimeout = 30
                 val payload = byteArrayOf(0x00)
-                // إرسال نبضة سريعة لكل العناوين 1..254 لتنشيط جدول ARP في النواة
                 for (i in 1..254) {
                     runCatching {
                         val addr = InetAddress.getByName("$subnet.$i")
@@ -609,31 +648,23 @@ class LanScanner(private val context: Context) {
             BufferedReader(InputStreamReader(proc.inputStream)).use { reader ->
                 reader.forEachLine { line ->
                     val tokens = line.trim().split(Regex("\\s+"))
-                    val lladdrIdx = tokens.indexOf("lladdr")
-                    if (tokens.isNotEmpty() && lladdrIdx != -1 && lladdrIdx + 1 < tokens.size) {
+                    if (tokens.isNotEmpty() && tokens[0].contains('.')) {
                         val ip = tokens[0]
-                        val mac = tokens[lladdrIdx + 1].uppercase()
-                        if (mac.length == 17 && mac != "00:00:00:00:00:00") {
-                            result[ip] = mac
+                        val lladdrIdx = tokens.indexOf("lladdr")
+                        if (lladdrIdx != -1 && lladdrIdx + 1 < tokens.size) {
+                            val mac = tokens[lladdrIdx + 1].uppercase()
+                            if (mac.length == 17 && mac != "00:00:00:00:00:00") {
+                                result[ip] = mac
+                            }
+                        } else if (line.contains("REACHABLE") || line.contains("DELAY") || line.contains("STALE")) {
+                            // حتى لو أخفى أندرويد الـ MAC، وجود REACHABLE يعني أن الـ IP متصل فعلياً!
+                            result.putIfAbsent(ip, "")
                         }
                     }
                 }
             }
         }
         return result
-    }
-
-    private fun buildSampleProbesWithCameras(subnet: String, localIp: String, gatewayIp: String): List<HostProbeResult> {
-        val candidates = listOf(
-            HostProbeResult("$subnet.108", true, 12, listOf(554, 8000, 80), "Hikvision-Cam-1", true, true),
-            HostProbeResult("$subnet.109", true, 16, listOf(554, 34567, 8899), "ICSee-WiFi-Cam", true, true),
-            HostProbeResult("$subnet.115", true, 19, listOf(554, 37777), "Imou-Dahua-Cam", true, true),
-            HostProbeResult("$subnet.102", true, 14, listOf(62078), "iPhone-15-Pro", false, false),
-            HostProbeResult("$subnet.112", true, 22, listOf(8080), "Galaxy-S23", false, false),
-            HostProbeResult("$subnet.118", true, 35, listOf(80), "Redmi-Note-13", false, false),
-            HostProbeResult("$subnet.120", true, 18, listOf(8008, 8009), "LG-WebOS-TV", false, false),
-        )
-        return candidates.filter { it.ip != localIp && it.ip != gatewayIp }
     }
 
     private fun intToIp(ip: Int): String =

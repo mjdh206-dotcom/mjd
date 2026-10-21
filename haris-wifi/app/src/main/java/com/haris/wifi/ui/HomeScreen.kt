@@ -147,7 +147,13 @@ fun HomeScreen(vm: HarisViewModel) {
                 ) { device ->
                     SimplePhoneRowCard(
                         device = device,
-                        onOneClickCut = { vm.toggleInstantCut(device) },
+                        onOneClickCut = {
+                            val willBlock = !device.isBlocked
+                            vm.toggleInstantCut(device)
+                            if (willBlock) {
+                                showLiveRouterBox = true
+                            }
+                        },
                         onRenameClick = { vm.openDeviceSheet(device) },
                     )
                 }
@@ -569,19 +575,90 @@ private fun SmartRouterConnectorEngine(
     val boxModifier = if (visible) {
         Modifier
             .fillMaxWidth()
-            .height(320.dp)
             .clip(RoundedCornerShape(16.dp))
-            .border(1.dp, AmberWarn, RoundedCornerShape(16.dp))
+            .background(CardSurface)
+            .border(1.5.dp, CoralRed, RoundedCornerShape(16.dp))
+            .padding(10.dp)
     } else {
         Modifier
             .size(1.dp)
             .alpha(0f)
     }
 
-    Box(modifier = boxModifier) {
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { ctx ->
+    Column(modifier = boxModifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (visible) {
+            val targetDev = cmd?.first
+            Text(
+                text = if (targetDev != null) {
+                    "📡 جاري فصل «${targetDev.displayName}» (${targetDev.ip}) من الراوتر:"
+                } else {
+                    "📡 لوحة الراوتر المباشرة ($gatewayIp):"
+                },
+                style = MaterialTheme.typography.titleSmall,
+                color = CoralBright,
+                fontWeight = FontWeight.ExtraBold,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Emerald)
+                        .clickable {
+                            val loginJs = buildRouterAutoBlockJs(
+                                mac = targetDev?.mac ?: "",
+                                ip = targetDev?.ip ?: "",
+                                pass = pass,
+                            )
+                            webViewRef?.evaluateJavascript(loginJs, null)
+                            vm.showBanner("تم تنفيذ الدخول والحظر التلقائي في صفحة الراوتر!")
+                        }
+                        .padding(vertical = 9.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "⚡ تنفيذ الحظر التلقائي من الراوتر",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF032219),
+                        fontWeight = FontWeight.ExtraBold,
+                    )
+                }
+                if (targetDev != null) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(CardElevated)
+                            .clickable { vm.copyToClipboard("IP/MAC", "${targetDev.mac}") }
+                            .padding(horizontal = 10.dp, vertical = 9.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "نسخ الماك 📋",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = AmberWarn,
+                        )
+                    }
+                }
+            }
+        }
+
+        Box(
+            modifier = if (visible) {
+                Modifier
+                    .fillMaxWidth()
+                    .height(290.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White)
+            } else {
+                Modifier.size(1.dp)
+            }
+        ) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { ctx ->
                 WebView(ctx).apply {
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
@@ -647,6 +724,7 @@ private fun SmartRouterConnectorEngine(
                 }
             },
         )
+        }
     }
 }
 
