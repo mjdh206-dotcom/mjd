@@ -87,6 +87,7 @@ fun HomeScreen(vm: HarisViewModel) {
                 SimpleTopHeader(
                     ssid = vm.networkInfo.ssid,
                     gatewayIp = vm.networkInfo.gatewayIp,
+                    localIp = vm.networkInfo.localIp,
                 )
             }
 
@@ -186,7 +187,7 @@ fun HomeScreen(vm: HarisViewModel) {
 }
 
 @Composable
-private fun SimpleTopHeader(ssid: String, gatewayIp: String) {
+private fun SimpleTopHeader(ssid: String, gatewayIp: String, localIp: String) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -214,7 +215,7 @@ private fun SimpleTopHeader(ssid: String, gatewayIp: String) {
                     fontWeight = FontWeight.ExtraBold,
                 )
                 Text(
-                    text = "الشبكة: $ssid · الراوتر: $gatewayIp",
+                    text = "الراوتر: $gatewayIp · هاتفك: $localIp",
                     style = MaterialTheme.typography.bodySmall,
                     color = EmeraldBright,
                 )
@@ -679,41 +680,47 @@ private fun SmartRouterConnectorEngine(
                             super.onPageFinished(view, url)
                             val autoLoginAndExtractJs = """
                                 (function() {
-                                    try {
-                                        var docs = [document];
-                                        var iframes = document.querySelectorAll('iframe, frame');
-                                        for (var f = 0; f < iframes.length; f++) {
-                                            try { if (iframes[f].contentDocument) docs.push(iframes[f].contentDocument); } catch(e) {}
-                                        }
-                                        var fullDump = '';
-                                        for (var d = 0; d < docs.length; d++) {
-                                            var doc = docs[d];
-                                            fullDump += '\n' + (doc.body ? doc.body.innerHTML : '');
-                                            var passInput = doc.querySelector('input[type="password"]');
-                                            if (passInput && !passInput.value) {
-                                                var userInputs = doc.querySelectorAll('input[type="text"], input:not([type])');
-                                                for (var u = 0; u < userInputs.length; u++) {
-                                                    if (!userInputs[u].value) {
-                                                        userInputs[u].value = 'admin';
-                                                        userInputs[u].dispatchEvent(new Event('input', {bubbles:true}));
+                                    function scanRouterDom() {
+                                        try {
+                                            var docs = [document];
+                                            var iframes = document.querySelectorAll('iframe, frame');
+                                            for (var f = 0; f < iframes.length; f++) {
+                                                try { if (iframes[f].contentDocument) docs.push(iframes[f].contentDocument); } catch(e) {}
+                                            }
+                                            var fullDump = '';
+                                            for (var d = 0; d < docs.length; d++) {
+                                                var doc = docs[d];
+                                                fullDump += '\n' + (doc.body ? doc.body.innerHTML : '');
+                                                var passInput = doc.querySelector('input[type="password"]');
+                                                if (passInput && !passInput.value) {
+                                                    var userInputs = doc.querySelectorAll('input[type="text"], input:not([type])');
+                                                    for (var u = 0; u < userInputs.length; u++) {
+                                                        if (!userInputs[u].value) {
+                                                            userInputs[u].value = 'admin';
+                                                            userInputs[u].dispatchEvent(new Event('input', {bubbles:true}));
+                                                        }
                                                     }
-                                                }
-                                                passInput.value = '${vm.routerPassword}';
-                                                passInput.dispatchEvent(new Event('input', {bubbles:true}));
-                                                var btns = doc.querySelectorAll('button, input[type="submit"], input[type="button"], a');
-                                                for (var b = 0; b < btns.length; b++) {
-                                                    var t = (btns[b].innerText || btns[b].value || '').toLowerCase();
-                                                    if (t.indexOf('login') !== -1 || t.indexOf('log in') !== -1 || t.indexOf('دخول') !== -1) {
-                                                        btns[b].click();
-                                                        break;
+                                                    passInput.value = '${vm.routerPassword}';
+                                                    passInput.dispatchEvent(new Event('input', {bubbles:true}));
+                                                    var btns = doc.querySelectorAll('button, input[type="submit"], input[type="button"], a');
+                                                    for (var b = 0; b < btns.length; b++) {
+                                                        var t = (btns[b].innerText || btns[b].value || '').toLowerCase();
+                                                        if (t.indexOf('login') !== -1 || t.indexOf('log in') !== -1 || t.indexOf('دخول') !== -1 || btns[b].id === 'loginBtn') {
+                                                            btns[b].click();
+                                                            break;
+                                                        }
                                                     }
                                                 }
                                             }
-                                        }
-                                        if (window.HarisRouterBridge && fullDump.length > 0) {
-                                            window.HarisRouterBridge.onPageDump(fullDump);
-                                        }
-                                    } catch(e) {}
+                                            if (window.HarisRouterBridge && fullDump.length > 0) {
+                                                window.HarisRouterBridge.onPageDump(fullDump);
+                                            }
+                                        } catch(e) {}
+                                    }
+                                    scanRouterDom();
+                                    if (!window.__harisScannerInterval) {
+                                        window.__harisScannerInterval = setInterval(scanRouterDom, 2200);
+                                    }
                                 })();
                             """.trimIndent()
                             view?.evaluateJavascript(autoLoginAndExtractJs, null)

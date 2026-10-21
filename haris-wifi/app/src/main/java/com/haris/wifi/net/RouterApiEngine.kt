@@ -26,7 +26,7 @@ object RouterApiEngine {
     private val ipRegex = Regex("\\b(?:192\\.168|10\\.\\d{1,3}|172\\.(?:1[6-9]|2\\d|3[01]))\\.\\d{1,3}\\.\\d{1,3}\\b")
 
     /**
-     * سحب الأجهزة المتصلة مباشرة من واجهات الراوتر (Tenda / TP-Link / Huawei / Netis / D-Link / ZTE)
+     * سحب الأجهزة المتصلة مباشرة من واجهات الراوتر (Tenda / TP-Link / Huawei / Netis / D-Link / ZTE / FiberHome)
      */
     suspend fun fetchClientsFromRouter(
         gatewayIp: String,
@@ -61,6 +61,7 @@ object RouterApiEngine {
             "http://$gatewayIp/status_deviceinfo.htm",
             "http://$gatewayIp/dhcptbl.asp",
             "http://$gatewayIp/wlstatbl.htm",
+            "http://$gatewayIp/cgi-bin/luci",
             "http://$gatewayIp/",
         )
 
@@ -78,12 +79,13 @@ object RouterApiEngine {
     }
 
     /**
-     * تحليل أي صيغة يرد بها الراوتر (JSON أو مصفوفات TP-Link JS أو XML هواوي أو جداول HTML)
+     * تحليل أي صيغة يرد بها الراوتر (JSON أو مصفوفات TP-Link JS أو XML هواوي أو جداول HTML متعددة الأسطر)
      * لاستخراج (الاسم الحقيقي + الـ IP + الـ MAC الحقيقي)
      */
     fun parseClientsFromResponse(raw: String, gatewayIp: String): List<RouterClientItem> {
         val results = mutableListOf<RouterClientItem>()
         if (raw.isBlank()) return results
+        val subnetPrefix = gatewayIp.substringBeforeLast('.', "192.168.1")
 
         // أ) صيغة JSON (مثل Tenda / Netis / الراوترات الحديثة)
         runCatching {
@@ -113,8 +115,9 @@ object RouterApiEngine {
                                 o.optString("hostName", o.optString("Name", o.optString("HostName", "")))
                             )
                         )
-                        if (ip.isNotBlank() && macRegex.matches(mac) && ip != gatewayIp) {
-                            results.add(RouterClientItem(ip = ip, mac = mac, hostname = name.trim()))
+                        if (ip.isNotBlank() && ip != gatewayIp) {
+                            val validMac = if (macRegex.matches(mac)) mac else ""
+                            results.add(RouterClientItem(ip = ip, mac = validMac, hostname = name.trim()))
                         }
                     }
                 }
@@ -137,35 +140,25 @@ object RouterApiEngine {
             }
         }
 
-        // ج) صيغة XML هواوي (<Host><IpAddress>...</IpAddress><MacAddress>...</MacAddress><HostName>...</HostName></Host>)
-        runCatching {
-            if (raw.contains("<HostName", ignoreCase = true) || raw.contains("<MacAddress", ignoreCase = true)) {
-                val hostBlocks = raw.split(Regex("</Host>|</tr>", RegexOption.IGNORE_CASE))
-                for (block in hostBlocks) {
-                    val ip = ipRegex.find(block)?.value ?: continue
-                    val mac = macRegex.find(block)?.value?.replace('-', ':')?.uppercase() ?: continue
-                    val nameMatch = Regex("<(?:HostName|DeviceName)>(.*?)</(?:HostName|DeviceName)>", RegexOption.IGNORE_CASE).find(block)
-                    val name = nameMatch?.groupValues?.getOrNull(1)?.trim() ?: ""
-                    if (ip != gatewayIp) {
-                        results.add(RouterClientItem(ip = ip, mac = mac, hostname = name))
-                    }
-                }
-            }
-        }
+        // ج) استخراج من كتل HTML كاملة (<tr>...</tr> أو <li>...</li> أو <Host>...</Host>)
+        // مهم جداً: لا نقسم بالأسطر الجديدة قبل فحص </tr> لأن خلايا الجدول <td> تكون في أسطر متتالية!
+        val blocks = raw.split(Regex("</tr>|</li>|</Host>", RegexOption.IGNORE_CASE))
+        for (block in blocks) {
+            val ip = ipRegex.find(block)?.value ?: continue
+            if (!ip.startsWith("$subnetPrefix.")) continue
+            val lastOctet = ip.substringAfterLast('.').toIntOrNull() ?: continue
+            if (ip == gatewayIp || lastOctet <= 1 || lastOctet >= 255) continue
 
-        // د) استخراج عام من أسطر الجدول (HTML <tr> أو نصوص مفصولة) تحتوي على IP و MAC في نفس السطر
-        val lines = raw.split(Regex("</tr>|\\r?\\n|<br\\s*/?>", RegexOption.IGNORE_CASE))
-        for (line in lines) {
-            val ip = ipRegex.find(line)?.value ?: continue
-            if (ip == gatewayIp || ip.endsWith(".255") || ip.endsWith(".0")) continue
-            val mac = macRegex.find(line)?.value?.replace('-', ':')?.uppercase() ?: continue
-            // استخراج أي اسم جهاز واضح في نفس السطر
-            val cleanText = line
+            val mac = macRegex.find(block)?.value?.replace('-', ':')?.uppercase() ?: ""
+            val cleanText = block
+                .replace(Regex("<script[\\s\\S]*?</script>", RegexOption.IGNORE_CASE), " ")
+                .replace(Regex("<style[\\s\\S]*?</style>", RegexOption.IGNORE_CASE), " ")
                 .replace(Regex("<[^>]+>"), " ")
                 .replace(ip, " ")
                 .replace(mac, " ")
                 .replace(mac.replace(':', '-'), " ")
                 .replace(Regex("&[a-zA-Z0-9#]+;"), " ")
+
             val nameCandidate = cleanText
                 .split(Regex("[\\s,;|\"']+"))
                 .firstOrNull { token ->
@@ -177,11 +170,29 @@ object RouterApiEngine {
                         !token.equals("online", true) &&
                         !token.equals("connected", true) &&
                         !token.equals("wlan0", true) &&
+                        !token.equals("ssid", true) &&
+                        !token.equals("dhcp", true) &&
+                        !token.equals("lease", true) &&
+                        !token.equals("client", true) &&
                         !token.equals("true", true) &&
                         !token.equals("false", true) &&
                         !token.startsWith("http", true)
                 } ?: ""
-            results.add(RouterClientItem(ip = ip, mac = mac, hostname = nameCandidate))
+
+            if (mac.isNotBlank() || nameCandidate.isNotBlank()) {
+                results.add(RouterClientItem(ip = ip, mac = mac, hostname = nameCandidate))
+            }
+        }
+
+        // د) فحص إضافي سطراً بسطر للنصوص العادية
+        val lines = raw.split(Regex("\\r?\\n|<br\\s*/?>", RegexOption.IGNORE_CASE))
+        for (line in lines) {
+            val ip = ipRegex.find(line)?.value ?: continue
+            if (!ip.startsWith("$subnetPrefix.")) continue
+            val lastOctet = ip.substringAfterLast('.').toIntOrNull() ?: continue
+            if (ip == gatewayIp || lastOctet <= 1 || lastOctet >= 255) continue
+            val mac = macRegex.find(line)?.value?.replace('-', ':')?.uppercase() ?: continue
+            results.add(RouterClientItem(ip = ip, mac = mac, hostname = ""))
         }
 
         return results.distinctBy { it.ip }
@@ -230,7 +241,6 @@ object RouterApiEngine {
         runCatching {
             val referer = "http://$gatewayIp/userRpm/WlanMacFilterRpm.htm"
             if (block) {
-                // تفعيل الفلتر أولاً + ضبط القاعدة على Deny (Rule=0) + إضافة الماك
                 httpGet("http://$gatewayIp/userRpm/WlanMacFilterRpm.htm?Rule=0&ChangeRule=Change", basicAuth, cookieAuth, referer)
                 httpGet("http://$gatewayIp/userRpm/WlanMacFilterRpm.htm?EnFilter=1", basicAuth, cookieAuth, referer)
                 val addResp = httpGet(
@@ -248,63 +258,36 @@ object RouterApiEngine {
         // ٣. Netis Router (حظر فوري عبر CGI)
         runCatching {
             val enable = if (block) "1" else "0"
-            val netisResp = httpPost(
+            val r = httpPost(
                 urlStr = "http://$gatewayIp/cgi-bin-igd/netcore_set.cgi",
-                body = "mode_name=netcore_set&mac_filter_enable=$enable&mac_filter_rule=0&mac_addr=$macColon",
+                body = "mode_name=netcore_set&mac_filter_enable=$enable&mac_addr=$macColon&ip_addr=$targetIp",
                 basicAuth = basicAuth,
                 cookie = cookieAuth,
             )
-            if (netisResp != null) anySuccess = true
+            if (r != null) anySuccess = true
         }
 
-        // ٤. D-Link / Realtek / ZTE / Boa Router (حظر الماك في WLAN Access Control)
+        // ٤. D-Link / Realtek / ZTE / Boa CGI (حظر MAC)
         runCatching {
-            val rBoa = httpPost(
-                urlStr = "http://$gatewayIp/boafrm/formWlAc",
-                body = if (block) {
-                    "wlanAcEnabled=1&mac=$macColon&comment=Haris&addFilterMac=Add+%26+Apply"
-                } else {
-                    "wlanAcEnabled=0&apply=Apply+Changes"
-                },
+            val r = httpPost(
+                urlStr = "http://$gatewayIp/boaform/admin/formRteMacFilter",
+                body = "mac=$macColon&action=${if (block) "add" else "delete"}&submit-url=%2Fmacfilter.asp",
                 basicAuth = basicAuth,
                 cookie = cookieAuth,
             )
-            val rDlink = httpPost(
-                urlStr = "http://$gatewayIp/form2MacTbl.cgi",
-                body = "mac=$macColon&enable=${if (block) 1 else 0}&submit.htm?macfilter.htm=Send",
-                basicAuth = basicAuth,
-                cookie = cookieAuth,
-            )
-            if (rBoa != null || rDlink != null) anySuccess = true
+            if (r != null) anySuccess = true
         }
 
-        // ٥. Huawei HiLink Router API
+        // ٥. Huawei HiLink Router (حظر الماك عبر XML API)
         runCatching {
-            val tokXml = httpGet("http://$gatewayIp/api/webserver/SesTokInfo", basicAuth, cookieAuth) ?: ""
-            val sesInfo = Regex("<SesInfo>(.*?)</SesInfo>").find(tokXml)?.groupValues?.getOrNull(1) ?: ""
-            val tokInfo = Regex("<TokInfo>(.*?)</TokInfo>").find(tokXml)?.groupValues?.getOrNull(1) ?: ""
-            if (tokInfo.isNotBlank()) {
-                val filterStatus = if (block) "2" else "0" // 2 = Deny / Blacklist
-                val xmlPayload = """
-                    <?xml version="1.0" encoding="UTF-8"?>
-                    <request>
-                        <WifiMacFilterStatus>$filterStatus</WifiMacFilterStatus>
-                        <WifiMacFilterMac0>$macColon</WifiMacFilterMac0>
-                    </request>
-                """.trimIndent()
-                val conn = (URL("http://$gatewayIp/api/wlan/mac-filter").openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    connectTimeout = 900
-                    readTimeout = 900
-                    doOutput = true
-                    if (sesInfo.isNotBlank()) setRequestProperty("Cookie", sesInfo)
-                    setRequestProperty("__RequestVerificationToken", tokInfo)
-                    setRequestProperty("Content-Type", "application/xml")
-                }
-                conn.outputStream.use { it.write(xmlPayload.toByteArray()) }
-                if (conn.responseCode in 200..299) anySuccess = true
-                conn.disconnect()
-            }
+            val xml = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <request>
+                    <Ssids><Ssid><Index>0</Index><WifiMacFilterStatus>${if (block) "2" else "0"}</WifiMacFilterStatus><WifiMacFilterMac0>$macColon</WifiMacFilterMac0></Ssid></Ssids>
+                </request>
+            """.trimIndent()
+            val r = httpPostXml("http://$gatewayIp/api/wlan/multi-macfilter-settings", xml, basicAuth, cookieAuth)
+            if (r != null) anySuccess = true
         }
 
         anySuccess
@@ -319,19 +302,18 @@ object RouterApiEngine {
         return runCatching {
             val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
-                connectTimeout = 800
-                readTimeout = 800
+                connectTimeout = 900
+                readTimeout = 900
                 instanceFollowRedirects = true
                 setRequestProperty("Authorization", "Basic $basicAuth")
                 setRequestProperty("Cookie", cookie)
+                setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14)")
                 if (referer != null) setRequestProperty("Referer", referer)
             }
             val code = conn.responseCode
-            val text = if (code in 200..299) {
+            if (code in 200..299) {
                 conn.inputStream.bufferedReader().use { it.readText() }
             } else null
-            conn.disconnect()
-            text
         }.getOrNull()
     }
 
@@ -344,20 +326,44 @@ object RouterApiEngine {
         return runCatching {
             val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
-                connectTimeout = 800
-                readTimeout = 800
                 doOutput = true
+                connectTimeout = 900
+                readTimeout = 900
+                instanceFollowRedirects = true
                 setRequestProperty("Authorization", "Basic $basicAuth")
                 setRequestProperty("Cookie", cookie)
-                setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+                setRequestProperty("Referer", urlStr)
             }
             conn.outputStream.use { it.write(body.toByteArray()) }
             val code = conn.responseCode
-            val text = if (code in 200..399) {
-                runCatching { conn.inputStream.bufferedReader().use { it.readText() } }.getOrDefault("")
+            if (code in 200..399) {
+                conn.inputStream.bufferedReader().use { it.readText() }
             } else null
-            conn.disconnect()
-            text
+        }.getOrNull()
+    }
+
+    private fun httpPostXml(
+        urlStr: String,
+        xmlBody: String,
+        basicAuth: String,
+        cookie: String,
+    ): String? {
+        return runCatching {
+            val conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                connectTimeout = 900
+                readTimeout = 900
+                setRequestProperty("Authorization", "Basic $basicAuth")
+                setRequestProperty("Cookie", cookie)
+                setRequestProperty("Content-Type", "application/xml; charset=UTF-8")
+            }
+            conn.outputStream.use { it.write(xmlBody.toByteArray()) }
+            val code = conn.responseCode
+            if (code in 200..399) {
+                conn.inputStream.bufferedReader().use { it.readText() }
+            } else null
         }.getOrNull()
     }
 }

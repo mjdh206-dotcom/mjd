@@ -112,14 +112,19 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
 
             parsed.forEach { rc ->
                 val existing = currentMap[rc.ip]
-                val realMac = rc.mac.uppercase()
+                val isGw = rc.ip == networkInfo.gatewayIp
+                val isMe = rc.ip == networkInfo.localIp
+                val realMac = rc.mac.uppercase().ifBlank {
+                    existing?.mac?.takeIf { it.isNotBlank() }
+                        ?: MacVendorDb.fallbackMacForIp(rc.ip, isGw, isCameraHint = false)
+                }
                 val vendorMatch = MacVendorDb.identify(
                     ip = rc.ip,
                     mac = realMac,
                     hostname = rc.hostname,
                     openPorts = existing?.openPorts ?: emptyList(),
-                    isGateway = rc.ip == networkInfo.gatewayIp,
-                    isSelf = rc.ip == networkInfo.localIp,
+                    isGateway = isGw,
+                    isSelf = isMe,
                 )
                 val meta = savedMeta[realMac] ?: savedMeta[rc.ip]
                 currentMap[rc.ip] = (existing ?: ConnectedDevice(ip = rc.ip, mac = realMac)).copy(
@@ -129,6 +134,10 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
                     defaultNameAr = vendorMatch.defaultNameAr,
                     customName = meta?.customName ?: existing?.customName ?: "",
                     deviceType = vendorMatch.deviceType,
+                    isOnline = true,
+                    isGateway = isGw,
+                    isSelf = isMe,
+                    isTrusted = isGw || isMe || (meta?.isTrusted ?: false),
                     isBlocked = meta?.isBlocked ?: existing?.isBlocked ?: false,
                 )
             }
@@ -151,50 +160,64 @@ class HarisViewModel(app: Application) : AndroidViewModel(app) {
             scanStatusText = "جاري البحث عن الموبايلات والكاميرات المتصلة..."
             hapticTap()
 
-            val hasRoot = cutter.checkRootAvailable()
-            val info = scanner.readNetworkInfo(isRootAvailable = hasRoot)
-            networkInfo = info
+            try {
+                val hasRoot = cutter.checkRootAvailable()
+                val info = scanner.readNetworkInfo(isRootAvailable = hasRoot)
+                networkInfo = info
 
-            val savedMeta = store.loadAllMeta()
-            val liveList = java.util.concurrent.ConcurrentHashMap<String, ConnectedDevice>()
-            val found = scanner.scanSubnet(
-                netInfo = info,
-                savedMeta = savedMeta,
-                routerUser = "admin",
-                routerPass = routerPassword,
-                deepCameraScan = deepCameraScan,
-                onDeviceFound = { newDev ->
-                    liveList[newDev.ip] = newDev
-                    devices = scanner.sortDevices(liveList.values.toList())
-                },
-                onProgress = { progress, text ->
-                    scanProgress = progress
-                    scanStatusText = text
+                val savedMeta = store.loadAllMeta()
+                val liveList = java.util.concurrent.ConcurrentHashMap<String, ConnectedDevice>()
+                devices.forEach { liveList[it.ip] = it }
+
+                val found = scanner.scanSubnet(
+                    netInfo = info,
+                    savedMeta = savedMeta,
+                    routerUser = "admin",
+                    routerPass = routerPassword,
+                    deepCameraScan = deepCameraScan,
+                    onDeviceFound = { newDev ->
+                        liveList[newDev.ip] = newDev
+                        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                            val combined = devices.associateBy { it.ip }.toMutableMap()
+                            liveList.forEach { (k, v) -> combined[k] = v }
+                            devices = scanner.sortDevices(combined.values.toList())
+                        }
+                    },
+                    onProgress = { progress, text ->
+                        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                            scanProgress = progress
+                            scanStatusText = text
+                        }
+                    }
+                )
+
+                found.forEach { dev ->
+                    liveList[dev.ip] = dev
+                    if (dev.isBlocked) {
+                        cutter.startCut(
+                            device = dev,
+                            gatewayIp = info.gatewayIp,
+                            localIp = info.localIp,
+                            routerPassword = routerPassword,
+                            isRootAvailable = info.isRootAvailable,
+                        )
+                    }
                 }
-            )
 
-            found.forEach { dev ->
-                if (dev.isBlocked) {
-                    cutter.startCut(
-                        device = dev,
-                        gatewayIp = info.gatewayIp,
-                        localIp = info.localIp,
-                        routerPassword = routerPassword,
-                        isRootAvailable = info.isRootAvailable,
-                    )
+                val finalCombined = devices.associateBy { it.ip }.toMutableMap()
+                liveList.forEach { (k, v) -> finalCombined[k] = v }
+                devices = scanner.sortDevices(finalCombined.values.toList())
+            } catch (_: Exception) {
+            } finally {
+                isScanning = false
+                scanProgress = 1f
+                val controllableCount = devices.count { it.canDisconnect }
+                val blockedCount = devices.count { it.isBlocked }
+                scanStatusText = if (blockedCount > 0) {
+                    "الأجهزة المكتشفة: $controllableCount · تم فصل النت عن: $blockedCount"
+                } else {
+                    "تم العثور على $controllableCount أجهزة متصلة بالشبكة"
                 }
-            }
-
-            devices = scanner.sortDevices(found)
-            isScanning = false
-            scanProgress = 1f
-
-            val controllableCount = devices.count { it.canDisconnect }
-            val blockedCount = devices.count { it.isBlocked }
-            scanStatusText = if (blockedCount > 0) {
-                "الأجهزة المكتشفة: $controllableCount · تم فصل النت عن: $blockedCount"
-            } else {
-                "تم العثور على $controllableCount أجهزة متصلة بالشبكة"
             }
         }
     }
