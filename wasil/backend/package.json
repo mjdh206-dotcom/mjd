@@ -1,0 +1,16 @@
+{
+  "name": "wasil-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "خادم واصل: يستقبل رسائل SMS الواردة لرقم Twilio الأمريكي ويعرضها لتطبيق أندرويد عبر API محمي برمز سري",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

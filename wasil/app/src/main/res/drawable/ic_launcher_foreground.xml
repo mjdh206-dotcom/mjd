@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- فقاعة محادثة ذهبية -->
+    <path
+        android:pathData="M40,38 h28 a7,7 0 0 1 7,7 v16 a7,7 0 0 1 -7,7 h-15 l-9,8 v-8 h-4 a7,7 0 0 1 -7,-7 v-16 a7,7 0 0 1 7,-7 z"
+        android:fillColor="#F3C778" />
+    <!-- نقاط الرسالة الثلاث -->
+    <path android:pathData="M47,53 m-3,0 a3,3 0 1 0 6,0 a3,3 0 1 0 -6,0" android:fillColor="#0B1220" />
+    <path android:pathData="M55.5,53 m-3,0 a3,3 0 1 0 6,0 a3,3 0 1 0 -6,0" android:fillColor="#0B1220" />
+    <path android:pathData="M64,53 m-3,0 a3,3 0 1 0 6,0 a3,3 0 1 0 -6,0" android:fillColor="#0B1220" />
+    <!-- موجات إشارة زرقاء أعلى الفقاعة -->
+    <path android:pathData="M50,30 a12,12 0 0 1 12,0" android:strokeColor="#7FD1FF" android:strokeWidth="3.2" android:strokeLineCap="round" android:fillColor="#00000000" />
+    <path android:pathData="M45.5,25.5 a19,19 0 0 1 21,0" android:strokeColor="#7FD1FF" android:strokeWidth="3.2" android:strokeLineCap="round" android:fillColor="#00000000" />
+</vector>
