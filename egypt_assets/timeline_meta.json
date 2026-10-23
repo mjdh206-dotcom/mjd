@@ -1,0 +1,50 @@
+{
+  "shot1_start": 0.0,
+  "shot2_twist": 3.291,
+  "shot3_saqqara": 6.233,
+  "shot4a_prince": 8.52,
+  "shot4b_torch": 10.979,
+  "shot5_excav": 13.058,
+  "shot6_stele": 16.15,
+  "shot7_colossi": 18.641,
+  "shot8_rosetta": 21.823,
+  "shot9_finale": 25.053,
+  "shot9_punch": 27.094,
+  "vo_segments": [
+    {
+      "id": 1,
+      "start": 0.14,
+      "split": 3.291,
+      "end": 6.067
+    },
+    {
+      "id": 2,
+      "start": 6.313,
+      "split": 8.52,
+      "end": 12.891
+    },
+    {
+      "id": 3,
+      "start": 13.138,
+      "split": 16.15,
+      "end": 18.474
+    },
+    {
+      "id": 4,
+      "start": 18.721,
+      "split": 21.823,
+      "end": 24.906
+    },
+    {
+      "id": 5,
+      "start": 25.153,
+      "split": 27.094,
+      "end": 29.42
+    }
+  ],
+  "chisel_strikes": [
+    16.6,
+    17.33,
+    18.05
+  ]
+}
