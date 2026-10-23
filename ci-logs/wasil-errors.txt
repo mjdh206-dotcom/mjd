@@ -1,0 +1,10 @@
+28:> Task :app:processDebugResources FAILED
+32:FAILURE: Build failed with an exception.
+34:* What went wrong:
+38:     com.wasil.app-main-57:/mipmap-anydpi/ic_launcher.xml: error: <adaptive-icon> elements require a sdk version of at least 26.
+39:     error: failed linking file resources.
+109:Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask$TaskAction
+267:Caused by: com.android.builder.internal.aapt.v2.Aapt2Exception: Android resource linking failed
+268:com.wasil.app-main-57:/mipmap-anydpi/ic_launcher.xml: error: <adaptive-icon> elements require a sdk version of at least 26.
+269:error: failed linking file resources.
+362:BUILD FAILED in 30s
