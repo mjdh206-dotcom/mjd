@@ -157,7 +157,7 @@ fun SettingsScreen(
                 SettingRow(
                     title = "إشعار الرسائل الجديدة",
                     subtitle = "إشعار محلي عند وصول رسالة أو كود تفعيل",
-                    icon = R.drawable.ic_bell,
+                    icon = painterResource(R.drawable.ic_bell),
                     trailing = {
                         Switch(
                             checked = notify,
@@ -189,7 +189,7 @@ fun SettingsScreen(
                 SettingRow(
                     title = "مسح الرسائل المحفوظة",
                     subtitle = "حذف النسخة المحلية فقط (تبقى على خادمك)",
-                    icon = R.drawable.ic_delete,
+                    icon = painterResource(R.drawable.ic_delete),
                     onClick = { vm.clearCachedMessages() },
                 )
             }
@@ -205,7 +205,7 @@ fun SettingsScreen(
                 SettingRow(
                     title = "معلومات مهمة قبل التفعيل",
                     subtitle = "حقيقة أرقام الإنترنت وواتساب وفايبر",
-                    icon = R.drawable.ic_info,
+                    icon = painterResource(R.drawable.ic_info),
                     onClick = onOpenInfo,
                 )
             }
