@@ -1,0 +1,81 @@
+name: Build فَهِّمني APK
+
+on:
+  push:
+    paths:
+      - "fahimni-translator/**"
+      - ".github/workflows/build-fahimni-apk.yml"
+  workflow_dispatch:
+    inputs:
+      commit_apk:
+        description: "حفظ ملف APK داخل المستودع (مجلد releases)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: بناء ملف APK لتطبيق فَهِّمني
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: تنزيل المستودع
+        uses: actions/checkout@v4
+
+      - name: تجهيز Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: تجهيز Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: بناء ملف APK الموقع الجاهز للتثبيت
+        id: gradle_build
+        continue-on-error: true
+        working-directory: fahimni-translator
+        run: |
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace assembleDebug 2>&1 | tee build.log
+
+      - name: حفظ سجل البناء عند الفشل
+        if: steps.gradle_build.outcome != 'success'
+        run: |
+          git config user.name "fahimni-build-bot"
+          git config user.email "fahimni-build-bot@users.noreply.github.com"
+          mkdir -p ci-logs
+          cp fahimni-translator/build.log ci-logs/fahimni-last-build.log
+          grep -nE "e: file|e: |error:|FAILURE|What went wrong|Caused by|Unresolved|FAILED" fahimni-translator/build.log > ci-logs/fahimni-errors.txt || true
+          git add -f ci-logs
+          git commit -m "ci: سجل بناء فاشل لتطبيق فهمني [skip ci]" || echo "لا تغييرات"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: رفع ملف APK كـ Artifact
+        if: steps.gradle_build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fahimni-translator-apk
+          path: fahimni-translator/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: حفظ APK للتحميل المباشر في المستودع
+        if: steps.gradle_build.outcome == 'success' && (inputs.commit_apk == true || contains(github.event.head_commit.message, '[save-apk]'))
+        run: |
+          git config user.name "fahimni-build-bot"
+          git config user.email "fahimni-build-bot@users.noreply.github.com"
+          mkdir -p releases dist
+          cp fahimni-translator/app/build/outputs/apk/debug/app-debug.apk releases/fahimni-translator-1.0.0.apk
+          cp fahimni-translator/app/build/outputs/apk/debug/app-debug.apk dist/fahimni-translator-1.0.0.apk
+          git add -f releases/fahimni-translator-1.0.0.apk dist/fahimni-translator-1.0.0.apk
+          git commit -m "build: APK تطبيق فَهِّمني 1.0.0 جاهز للتحميل المباشر [skip ci]" || echo "لا تغييرات"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: إيقاف عند الفشل
+        if: steps.gradle_build.outcome != 'success'
+        run: exit 1

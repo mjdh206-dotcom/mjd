@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- فقاعة محادثة ذهبية وزمردية متداخلة مع موجات صوتية -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M30,34h30a8,8 0,0 1,8 8v14a8,8 0,0 1,-8 8h-16l-9,8v-8h-5a8,8 0,0 1,-8 -8v-14a8,8 0,0 1,8 -8z" />
+    <path
+        android:fillColor="#F4C96B"
+        android:pathData="M48,46h30a8,8 0,0 1,8 8v14a8,8 0,0 1,-8 8h-5v8l-9,-8h-16a8,8 0,0 1,-8 -8v-14a8,8 0,0 1,8 -8z" />
+    <!-- موجات صوتية داخل الفقاعة -->
+    <path
+        android:strokeColor="#060E1C"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M55,58v6M61,54v14M67,56v10M73,59v4" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.0"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M36,46v6M42,42v14M48,45v8" />
+</vector>
