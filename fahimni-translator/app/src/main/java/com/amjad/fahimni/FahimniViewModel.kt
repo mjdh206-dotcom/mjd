@@ -8,11 +8,11 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.amjad.fahimni.data.AppPreferences
-import com.amjad.fahimni.data.ConversationMessage
-import com.amjad.fahimni.data.DialectComparisonItem
-import com.amjad.fahimni.data.DialectProfile
-import com.amjad.fahimni.data.SpeakerSide
+import com.amjad.fahimni.data.AppStorage
+import com.amjad.fahimni.data.ChatTurn
+import com.amjad.fahimni.data.LanguageCatalog
+import com.amjad.fahimni.data.SpokenLanguage
+import com.amjad.fahimni.data.TurnSide
 import com.amjad.fahimni.engine.OnlineTranslatorService
 import com.amjad.fahimni.speech.LiveSpeechRecognizer
 import com.amjad.fahimni.speech.VoiceSpeaker
@@ -24,370 +24,243 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class ActiveTab {
-    CONVERSATION,
-    ALL_DIALECTS,
-    PHRASEBOOK,
-    SETTINGS,
-}
-
-data class FahimniUiState(
-    val activeTab: ActiveTab = ActiveTab.CONVERSATION,
-    val myDialect: DialectProfile = DialectProfile.AR_SY,
-    val partnerDialect: DialectProfile = DialectProfile.AUTO_DETECT,
-    val lastDetectedPartner: DialectProfile? = null,
-    val partnerListenLocaleHint: String = "ar",
-    val autoSyncToDetected: Boolean = true,
-    val autoSpeak: Boolean = true,
-    val speechSpeed: Float = 1.0f,
-    val handsFreeLoop: Boolean = false,
-    val deepCloudAi: Boolean = true,
-    val faceToFaceFlipped: Boolean = false,
-    val isOnline: Boolean = true,
+data class SimpleUiState(
+    val detectedPartnerLanguage: SpokenLanguage? = null,
+    val activeListeningSide: TurnSide? = null,
     val isTranslating: Boolean = false,
-    val activeListeningSide: SpeakerSide? = null,
-    val messages: List<ConversationMessage> = emptyList(),
-    val statusBanner: String? = null,
-    val comparisonInput: String = "يعطيك العافية يا أخي شو بدك نعمل اليوم؟",
-    val comparisonResults: List<DialectComparisonItem> = emptyList(),
-    val isComparing: Boolean = false,
+    val autoSpeak: Boolean = true,
+    val turns: List<ChatTurn> = emptyList(),
+    val toastMessage: String? = null,
 )
 
 class FahimniViewModel(application: Application) : AndroidViewModel(application) {
 
     private val appContext = application.applicationContext
-    private val prefs = AppPreferences(appContext)
-    private val translator = OnlineTranslatorService(appContext)
+    private val storage = AppStorage(appContext)
+    private val translator = OnlineTranslatorService()
     val voiceSpeaker = VoiceSpeaker(appContext, translator.httpClient)
     val speechRecognizer = LiveSpeechRecognizer(appContext)
 
-    private var autoLoopJob: Job? = null
-    private var bannerClearJob: Job? = null
-
-    var onLaunchSystemVoicePopup: ((Intent, SpeakerSide) -> Unit)? = null
+    private var toastJob: Job? = null
+    var onLaunchSystemVoicePopup: ((Intent, TurnSide) -> Unit)? = null
 
     private val _uiState = MutableStateFlow(
-        FahimniUiState(
-            myDialect = prefs.myDialect,
-            partnerDialect = prefs.partnerDialect,
-            lastDetectedPartner = prefs.lastDetectedPartnerDialect,
-            partnerListenLocaleHint = prefs.partnerSpeechHintLocale,
-            autoSyncToDetected = prefs.autoSyncTargetToDetected,
-            autoSpeak = prefs.autoSpeak,
-            speechSpeed = prefs.speechSpeed,
-            handsFreeLoop = prefs.handsFreeLoop,
-            deepCloudAi = prefs.deepCloudAiEnabled,
-            isOnline = translator.isOnline(),
-            messages = prefs.loadMessages(),
+        SimpleUiState(
+            detectedPartnerLanguage = storage.detectedPartnerLanguage,
+            autoSpeak = storage.autoSpeak,
+            turns = storage.loadTurns(),
         )
     )
-    val uiState: StateFlow<FahimniUiState> = _uiState.asStateFlow()
+    val uiState: StateFlow<SimpleUiState> = _uiState.asStateFlow()
 
-    init {
-        refreshDialectComparison(_uiState.value.comparisonInput)
-    }
-
-    fun selectTab(tab: ActiveTab) {
-        _uiState.update { it.copy(activeTab = tab, isOnline = translator.isOnline()) }
-    }
-
-    fun setMyDialect(profile: DialectProfile) {
-        val valid = if (profile == DialectProfile.AUTO_DETECT) DialectProfile.AR_SIMPLE else profile
-        prefs.myDialect = valid
-        _uiState.update { it.copy(myDialect = valid) }
-        showBanner("تم ضبط لهجتك: ${valid.flag} ${valid.shortNameAr}")
-    }
-
-    fun setPartnerDialect(profile: DialectProfile) {
-        prefs.partnerDialect = profile
-        if (profile != DialectProfile.AUTO_DETECT) {
-            val hint = if (profile.isArabicDialect) "ar" else profile.speechLocale
-            prefs.partnerSpeechHintLocale = hint
-            _uiState.update {
-                it.copy(partnerDialect = profile, partnerListenLocaleHint = hint)
-            }
-            showBanner("تم تحديد طرف المحادثة: ${profile.flag} ${profile.shortNameAr}")
-        } else {
-            prefs.partnerSpeechHintLocale = "ar"
-            _uiState.update {
-                it.copy(partnerDialect = DialectProfile.AUTO_DETECT, partnerListenLocaleHint = "ar")
-            }
-            showBanner("🎯 تم تفعيل الكشف التلقائي الذكي للهجة المتحدث")
-        }
-    }
-
-    fun setPartnerListenEarLocale(locale: String, label: String) {
-        prefs.partnerSpeechHintLocale = locale
-        _uiState.update { it.copy(partnerListenLocaleHint = locale) }
-        showBanner("🎙️ رادار الاستماع مضبوط على: $label")
-    }
-
-    fun swapDialects() {
-        val st = _uiState.value
-        val currentPartnerResolved = when {
-            st.partnerDialect != DialectProfile.AUTO_DETECT -> st.partnerDialect
-            st.lastDetectedPartner != null -> st.lastDetectedPartner
-            else -> DialectProfile.AR_SIMPLE
-        }
-        val oldMine = st.myDialect
-        setMyDialect(currentPartnerResolved)
-        setPartnerDialect(oldMine)
-        hapticTick()
-    }
-
-    fun toggleFaceToFace() {
-        hapticTick()
-        _uiState.update { it.copy(faceToFaceFlipped = !it.faceToFaceFlipped) }
-    }
-
-    fun setHandsFreeLoop(enabled: Boolean) {
-        prefs.handsFreeLoop = enabled
-        if (!enabled) autoLoopJob?.cancel()
-        _uiState.update { it.copy(handsFreeLoop = enabled) }
-        showBanner(
-            if (enabled) "🔁 الحوار المستمر التلقائي مفعّل (يتناوب الاستماع تلقائياً)"
-            else "تم إيقاف التناوب التلقائي"
-        )
-    }
-
-    fun setAutoSpeak(enabled: Boolean) {
-        prefs.autoSpeak = enabled
-        _uiState.update { it.copy(autoSpeak = enabled) }
-    }
-
-    fun setAutoSyncToDetected(enabled: Boolean) {
-        prefs.autoSyncTargetToDetected = enabled
-        _uiState.update { it.copy(autoSyncToDetected = enabled) }
-    }
-
-    fun setSpeechSpeed(speed: Float) {
-        prefs.speechSpeed = speed
-        _uiState.update { it.copy(speechSpeed = speed) }
-    }
-
-    fun setDeepCloudAi(enabled: Boolean) {
-        prefs.deepCloudAiEnabled = enabled
-        _uiState.update { it.copy(deepCloudAi = enabled) }
-    }
-
-    fun startVoiceCapture(side: SpeakerSide) {
-        autoLoopJob?.cancel()
+    /**
+     * الزر 1: كبسة «اعرف شو لغتو وترجم للعربي»
+     */
+    fun startDetectOtherPerson() {
         voiceSpeaker.stop()
-        hapticTick()
+        vibrateShort()
 
-        val st = _uiState.value
-        val localeTag = when (side) {
-            SpeakerSide.ME -> if (st.myDialect.isArabicDialect) "ar" else st.myDialect.speechLocale
-            SpeakerSide.PARTNER -> {
-                if (st.partnerDialect == DialectProfile.AUTO_DETECT) {
-                    st.partnerListenLocaleHint
-                } else if (st.partnerDialect.isArabicDialect) {
-                    "ar"
-                } else {
-                    st.partnerDialect.speechLocale
-                }
-            }
-        }
-
-        _uiState.update {
-            it.copy(
-                activeListeningSide = side,
-                isOnline = translator.isOnline(),
-                statusBanner = null,
-            )
-        }
+        val knownLocale = _uiState.value.detectedPartnerLanguage?.speechLocale
+        _uiState.update { it.copy(activeListeningSide = TurnSide.OTHER_PERSON, toastMessage = null) }
 
         speechRecognizer.startListening(
-            localeTag = localeTag,
-            onResult = { spokenText ->
+            autoDetectOtherPerson = true,
+            knownPartnerLocale = knownLocale,
+            onResult = { spokenText, acousticLocale ->
                 _uiState.update { it.copy(activeListeningSide = null) }
-                processSpokenOrTypedInput(spokenText, side)
+                handleOtherPersonSpeech(spokenText, acousticLocale)
             },
-            onError = { errMsg ->
+            onError = { msg ->
                 _uiState.update { it.copy(activeListeningSide = null) }
-                showBanner(errMsg)
+                showToast(msg)
             },
             onFallbackPopup = { intent ->
                 _uiState.update { it.copy(activeListeningSide = null) }
-                onLaunchSystemVoicePopup?.invoke(intent, side)
+                onLaunchSystemVoicePopup?.invoke(intent, TurnSide.OTHER_PERSON)
             }
         )
     }
 
-    fun commitActiveListeningNow() {
+    /**
+     * الزر 2: كبسة «احكي بالعربي — يترجملو بناءً على لغتو»
+     */
+    fun startSpeakMyArabic() {
+        voiceSpeaker.stop()
+        vibrateShort()
+
+        _uiState.update { it.copy(activeListeningSide = TurnSide.ME_ARABIC, toastMessage = null) }
+
+        speechRecognizer.startListening(
+            autoDetectOtherPerson = false,
+            knownPartnerLocale = null,
+            onResult = { spokenArabic, _ ->
+                _uiState.update { it.copy(activeListeningSide = null) }
+                handleMyArabicSpeech(spokenArabic)
+            },
+            onError = { msg ->
+                _uiState.update { it.copy(activeListeningSide = null) }
+                showToast(msg)
+            },
+            onFallbackPopup = { intent ->
+                _uiState.update { it.copy(activeListeningSide = null) }
+                onLaunchSystemVoicePopup?.invoke(intent, TurnSide.ME_ARABIC)
+            }
+        )
+    }
+
+    fun finishListeningNow() {
         speechRecognizer.finishAndCommitNow()
     }
 
-    fun cancelActiveListening() {
-        autoLoopJob?.cancel()
+    fun cancelListening() {
         speechRecognizer.cancel()
         _uiState.update { it.copy(activeListeningSide = null) }
     }
 
-    fun processSpokenOrTypedInput(
-        rawText: String,
-        side: SpeakerSide,
-    ) {
-        val text = rawText.trim()
-        if (text.isBlank()) return
+    fun handleOtherPersonSpeech(rawText: String, acousticLocale: String? = null) {
+        val clean = rawText.trim()
+        if (clean.isBlank()) return
 
         viewModelScope.launch {
-            val st = _uiState.value
+            _uiState.update { it.copy(isTranslating = true) }
+
+            val (detectedLang, arabicTranslation) = translator.detectLanguageAndTranslateToArabic(
+                rawSpokenText = clean,
+                acousticLocaleHint = acousticLocale,
+            )
+
+            storage.detectedPartnerLanguage = detectedLang
+
+            val turn = ChatTurn(
+                id = "t_${System.currentTimeMillis()}",
+                side = TurnSide.OTHER_PERSON,
+                originalText = clean,
+                translatedText = arabicTranslation,
+                partnerLanguage = detectedLang,
+                timestamp = System.currentTimeMillis(),
+            )
+
+            val updated = (_uiState.value.turns + turn).takeLast(40)
+            storage.saveTurns(updated)
+
             _uiState.update {
                 it.copy(
-                    isTranslating = true,
-                    isOnline = translator.isOnline(),
-                )
-            }
-
-            val isPartnerSpeaking = (side == SpeakerSide.PARTNER)
-            val sourceHint = if (isPartnerSpeaking) {
-                st.partnerDialect
-            } else {
-                DialectProfile.AUTO_DETECT
-            }
-
-            val effectiveTarget = if (isPartnerSpeaking) {
-                // الطرف المقابل يتكلم -> أترجم كلامه إلى لهجتي أنا لأفهمه فوراً!
-                st.myDialect
-            } else {
-                // أنا أتكلم بأي لهجة -> أترجم كلامي إلى لهجة/لغة الطرف المقابل (سواء المحددة أو المكتشفة تلقائياً)!
-                when {
-                    st.partnerDialect != DialectProfile.AUTO_DETECT -> st.partnerDialect
-                    st.autoSyncToDetected && st.lastDetectedPartner != null -> st.lastDetectedPartner
-                    else -> DialectProfile.AR_SIMPLE
-                }
-            }
-
-            val outcome = translator.translateSmart(
-                rawText = text,
-                sourceHint = sourceHint,
-                targetDialect = effectiveTarget,
-                deepCloudAi = st.deepCloudAi,
-            )
-
-            val autoDetectedFlag = isPartnerSpeaking && st.partnerDialect == DialectProfile.AUTO_DETECT
-            if (isPartnerSpeaking) {
-                prefs.lastDetectedPartnerDialect = outcome.detectedDialect
-            }
-
-            val msg = ConversationMessage(
-                id = "m_${System.currentTimeMillis()}_${(100..999).random()}",
-                side = side,
-                originalText = outcome.originalText,
-                translatedText = outcome.translatedText,
-                clearArabicSubtitle = outcome.clearArabicSubtitle,
-                detectedDialect = outcome.detectedDialect,
-                targetDialect = outcome.targetDialect,
-                confidence = outcome.confidence,
-                slangNotes = outcome.slangNotes,
-                latencyMs = outcome.latencyMs,
-                timestamp = System.currentTimeMillis(),
-                isAutoDetected = autoDetectedFlag,
-            )
-
-            val updatedMessages = (_uiState.value.messages + msg).takeLast(60)
-            prefs.saveMessages(updatedMessages)
-
-            _uiState.update { state ->
-                state.copy(
                     isTranslating = false,
-                    messages = updatedMessages,
-                    lastDetectedPartner = if (isPartnerSpeaking) outcome.detectedDialect else state.lastDetectedPartner,
-                    statusBanner = if (autoDetectedFlag) {
-                        "🎯 تم اكتشاف اللهجة تلقائياً: ${outcome.detectedDialect.flag} ${outcome.detectedDialect.nameAr} (${outcome.confidence}%)"
-                    } else state.statusBanner,
+                    detectedPartnerLanguage = detectedLang,
+                    turns = updated,
+                    toastMessage = "🎯 لغته: ${detectedLang.flag} ${detectedLang.nameAr}",
                 )
             }
 
             if (_uiState.value.autoSpeak) {
-                val nextSide = if (side == SpeakerSide.ME) SpeakerSide.PARTNER else SpeakerSide.ME
                 voiceSpeaker.speak(
-                    text = msg.translatedText,
-                    ttsLangCode = msg.targetDialect.ttsLang,
-                    messageId = msg.id,
-                    speed = _uiState.value.speechSpeed,
-                    onComplete = {
-                        if (_uiState.value.handsFreeLoop &&
-                            _uiState.value.activeTab == ActiveTab.CONVERSATION &&
-                            _uiState.value.activeListeningSide == null
-                        ) {
-                            autoLoopJob?.cancel()
-                            autoLoopJob = viewModelScope.launch {
-                                delay(550L)
-                                if (_uiState.value.handsFreeLoop) {
-                                    startVoiceCapture(nextSide)
-                                }
-                            }
-                        }
-                    }
+                    text = arabicTranslation,
+                    ttsLangCode = "ar",
+                    messageId = turn.id,
                 )
             }
         }
     }
 
-    fun speakMessage(msg: ConversationMessage) {
-        hapticTick()
-        voiceSpeaker.speak(
-            text = msg.translatedText,
-            ttsLangCode = msg.targetDialect.ttsLang,
-            messageId = msg.id,
-            speed = _uiState.value.speechSpeed,
-        )
-    }
+    fun handleMyArabicSpeech(rawArabic: String) {
+        val clean = rawArabic.trim()
+        if (clean.isBlank()) return
 
-    fun speakArbitraryText(text: String, dialect: DialectProfile, tagId: String) {
-        hapticTick()
-        voiceSpeaker.speak(
-            text = text,
-            ttsLangCode = dialect.ttsLang,
-            messageId = tagId,
-            speed = _uiState.value.speechSpeed,
-        )
-    }
-
-    fun sendToAllDialectsStudio(text: String) {
-        _uiState.update {
-            it.copy(
-                activeTab = ActiveTab.ALL_DIALECTS,
-                comparisonInput = text,
-            )
-        }
-        refreshDialectComparison(text)
-    }
-
-    fun refreshDialectComparison(input: String) {
-        _uiState.update { it.copy(comparisonInput = input, isComparing = true) }
         viewModelScope.launch {
-            val list = translator.compareAcrossDialectsOnline(input)
-            _uiState.update { it.copy(comparisonResults = list, isComparing = false) }
-        }
-    }
+            _uiState.update { it.copy(isTranslating = true) }
 
-    fun speakQuickPhraseToPartner(arabicPhrase: String) {
-        _uiState.update { it.copy(activeTab = ActiveTab.CONVERSATION) }
-        processSpokenOrTypedInput(arabicPhrase, SpeakerSide.ME)
-    }
+            val targetLang = _uiState.value.detectedPartnerLanguage
+                ?: LanguageCatalog.defaultFallbackTarget
 
-    fun clearHistory() {
-        voiceSpeaker.stop()
-        prefs.saveMessages(emptyList())
-        _uiState.update { it.copy(messages = emptyList()) }
-        showBanner("تم مسح سجل المحادثة")
-    }
+            val translatedForHim = translator.translateMyArabicToPartner(
+                mySpokenArabic = clean,
+                partnerLanguage = targetLang,
+            )
 
-    fun showBanner(message: String) {
-        bannerClearJob?.cancel()
-        _uiState.update { it.copy(statusBanner = message) }
-        bannerClearJob = viewModelScope.launch {
-            delay(4000L)
-            _uiState.update { state ->
-                if (state.statusBanner == message) state.copy(statusBanner = null) else state
+            val turn = ChatTurn(
+                id = "t_${System.currentTimeMillis()}",
+                side = TurnSide.ME_ARABIC,
+                originalText = clean,
+                translatedText = translatedForHim,
+                partnerLanguage = targetLang,
+                timestamp = System.currentTimeMillis(),
+            )
+
+            val updated = (_uiState.value.turns + turn).takeLast(40)
+            storage.saveTurns(updated)
+
+            _uiState.update {
+                it.copy(
+                    isTranslating = false,
+                    turns = updated,
+                )
+            }
+
+            if (_uiState.value.autoSpeak) {
+                voiceSpeaker.speak(
+                    text = translatedForHim,
+                    ttsLangCode = targetLang.ttsLang,
+                    messageId = turn.id,
+                )
             }
         }
     }
 
-    private fun hapticTick() {
+    fun replayTurnAudio(turn: ChatTurn) {
+        vibrateShort()
+        val langCode = if (turn.side == TurnSide.OTHER_PERSON) {
+            "ar"
+        } else {
+            turn.partnerLanguage.ttsLang
+        }
+        voiceSpeaker.speak(
+            text = turn.translatedText,
+            ttsLangCode = langCode,
+            messageId = turn.id,
+        )
+    }
+
+    fun resetToAutoDetect() {
+        vibrateShort()
+        storage.detectedPartnerLanguage = null
+        _uiState.update { it.copy(detectedPartnerLanguage = null) }
+        showToast("🎯 تم التصفير — جاهز لكشف لغة شخص جديد تلقائياً")
+    }
+
+    fun setPartnerLanguageManually(lang: SpokenLanguage?) {
+        storage.detectedPartnerLanguage = lang
+        _uiState.update { it.copy(detectedPartnerLanguage = lang) }
+        if (lang != null) {
+            showToast("تم اختيار لغة الطرف المقابل: ${lang.flag} ${lang.nameAr}")
+        } else {
+            showToast("🎯 تم تفعيل الكشف التلقائي")
+        }
+    }
+
+    fun toggleAutoSpeak() {
+        val next = !_uiState.value.autoSpeak
+        storage.autoSpeak = next
+        if (!next) voiceSpeaker.stop()
+        _uiState.update { it.copy(autoSpeak = next) }
+        showToast(if (next) "🔊 النطق التلقائي مفعّل" else "🔇 تم كتم النطق التلقائي")
+    }
+
+    fun clearScreen() {
+        voiceSpeaker.stop()
+        storage.saveTurns(emptyList())
+        _uiState.update { it.copy(turns = emptyList()) }
+    }
+
+    fun showToast(msg: String) {
+        toastJob?.cancel()
+        _uiState.update { it.copy(toastMessage = msg) }
+        toastJob = viewModelScope.launch {
+            delay(3200L)
+            _uiState.update { st -> if (st.toastMessage == msg) st.copy(toastMessage = null) else st }
+        }
+    }
+
+    private fun vibrateShort() {
         runCatching {
             val vib = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val vm = appContext.getSystemService(Application.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -397,10 +270,10 @@ class FahimniViewModel(application: Application) : AndroidViewModel(application)
                 appContext.getSystemService(Application.VIBRATOR_SERVICE) as Vibrator
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vib.vibrate(VibrationEffect.createOneShot(18L, VibrationEffect.DEFAULT_AMPLITUDE))
+                vib.vibrate(VibrationEffect.createOneShot(20L, VibrationEffect.DEFAULT_AMPLITUDE))
             } else {
                 @Suppress("DEPRECATION")
-                vib.vibrate(18L)
+                vib.vibrate(20L)
             }
         }
     }

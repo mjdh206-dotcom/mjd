@@ -13,8 +13,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * محرك الاستماع الصوتي المباشر عبر الإنترنت:
- * يلتقط الكلام لحظة بلحظة بأي لهجة عربية مع عرض الكلمات فوراً أثناء الحديث.
+ * محرك الالتقاط الصوتي المباشر بوضعين مبسطين:
+ * 1) وضع كشف لغة الشخص المقابل تلقائياً (ENABLE_LANGUAGE_DETECTION + ENABLE_LANGUAGE_SWITCH)
+ * 2) وضع التحدث بالعربية بأي لهجة
  */
 class LiveSpeechRecognizer(private val context: Context) {
 
@@ -31,31 +32,34 @@ class LiveSpeechRecognizer(private val context: Context) {
     val audioLevel: StateFlow<Float> = _audioLevel.asStateFlow()
 
     private var lastPartial: String = ""
+    private var detectedAcousticLocale: String? = null
     private var resultDelivered: Boolean = false
-    private var onFinalTextCallback: ((String) -> Unit)? = null
+    private var onFinalCallback: ((String, String?) -> Unit)? = null
     private var onErrorCallback: ((String) -> Unit)? = null
-    private var onNeedSystemPopupCallback: ((Intent) -> Unit)? = null
 
     fun startListening(
-        localeTag: String,
-        onResult: (String) -> Unit,
+        autoDetectOtherPerson: Boolean,
+        knownPartnerLocale: String?,
+        onResult: (text: String, acousticLocale: String?) -> Unit,
         onError: (String) -> Unit,
         onFallbackPopup: (Intent) -> Unit,
     ) {
         mainHandler.post {
             destroyInternal()
 
-            onFinalTextCallback = onResult
+            onFinalCallback = onResult
             onErrorCallback = onError
-            onNeedSystemPopupCallback = onFallbackPopup
             lastPartial = ""
+            detectedAcousticLocale = null
             resultDelivered = false
             _partialTranscript.value = ""
-            _audioLevel.value = 0.1f
+            _audioLevel.value = 0.12f
+
+            val intent = buildIntent(autoDetectOtherPerson, knownPartnerLocale)
 
             if (!SpeechRecognizer.isRecognitionAvailable(context)) {
                 _isListening.value = false
-                onFallbackPopup(buildRecognizerIntent(localeTag))
+                onFallbackPopup(intent)
                 return@post
             }
 
@@ -72,8 +76,7 @@ class LiveSpeechRecognizer(private val context: Context) {
                     }
 
                     override fun onRmsChanged(rmsdB: Float) {
-                        val normalized = ((rmsdB + 2f) / 12f).coerceIn(0.06f, 1.0f)
-                        _audioLevel.value = normalized
+                        _audioLevel.value = ((rmsdB + 2f) / 12f).coerceIn(0.08f, 1.0f)
                     }
 
                     override fun onBufferReceived(buffer: ByteArray?) {}
@@ -82,11 +85,19 @@ class LiveSpeechRecognizer(private val context: Context) {
                         _audioLevel.value = 0.08f
                     }
 
+                    override fun onLanguageDetection(results: Bundle) {
+                        val lang = results.getString("android.speech.extra.DETECTED_LANGUAGE")
+                        if (!lang.isNullOrBlank()) {
+                            detectedAcousticLocale = lang
+                        }
+                    }
+
                     override fun onPartialResults(partialResults: Bundle?) {
-                        val matches = partialResults
+                        val best = partialResults
                             ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                            ?.firstOrNull()
+                            ?.trim()
                             .orEmpty()
-                        val best = matches.firstOrNull()?.trim().orEmpty()
                         if (best.isNotBlank()) {
                             lastPartial = best
                             _partialTranscript.value = best
@@ -98,16 +109,19 @@ class LiveSpeechRecognizer(private val context: Context) {
                         resultDelivered = true
                         _isListening.value = false
                         _audioLevel.value = 0f
-                        val matches = results
+
+                        val finalBest = results
                             ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                            .orEmpty()
-                        val finalBest = matches.firstOrNull()?.trim().takeUnless { it.isNullOrBlank() }
+                            ?.firstOrNull()
+                            ?.trim()
+                            .takeUnless { it.isNullOrBlank() }
                             ?: lastPartial.trim()
+
                         _partialTranscript.value = ""
                         if (finalBest.isNotBlank()) {
-                            onFinalTextCallback?.invoke(finalBest)
+                            onFinalCallback?.invoke(finalBest, detectedAcousticLocale)
                         } else {
-                            onErrorCallback?.invoke("لم ألتقط كلاماً واضحاً، تحدث قريباً من المايكروفون")
+                            onErrorCallback?.invoke("لم يُسمع صوت واضح، اضغط وتكلم قريباً من الهاتف")
                         }
                     }
 
@@ -116,7 +130,6 @@ class LiveSpeechRecognizer(private val context: Context) {
                         _isListening.value = false
                         _audioLevel.value = 0f
 
-                        // إن كان المستخدم قد نطق جملة والتقطناها جزئياً قبل الصمت، نترجمها فوراً ولا نضيعها!
                         if (lastPartial.isNotBlank() &&
                             (error == SpeechRecognizer.ERROR_NO_MATCH ||
                                 error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ||
@@ -125,7 +138,7 @@ class LiveSpeechRecognizer(private val context: Context) {
                             resultDelivered = true
                             val captured = lastPartial.trim()
                             _partialTranscript.value = ""
-                            onFinalTextCallback?.invoke(captured)
+                            onFinalCallback?.invoke(captured, detectedAcousticLocale)
                             return
                         }
 
@@ -135,17 +148,13 @@ class LiveSpeechRecognizer(private val context: Context) {
                         val msg = when (error) {
                             SpeechRecognizer.ERROR_NETWORK,
                             SpeechRecognizer.ERROR_NETWORK_TIMEOUT ->
-                                "تحقق من اتصال الإنترنت للحصول على أسرع التقاط صوتي"
-                            SpeechRecognizer.ERROR_AUDIO ->
-                                "تعذر الوصول للمايكروفون، تأكد من عدم انشغاله بتطبيق آخر"
+                                "تأكد من اتصالك بالإنترنت ليعمل التطبيق بأقصى سرعة"
                             SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS ->
-                                "يرجى السماح بصلاحية المايكروفون للتحدث بالصوت"
-                            SpeechRecognizer.ERROR_RECOGNIZER_BUSY ->
-                                "محرك الصوت مشغول لحظة، اضغط مرة أخرى"
+                                "يرجى السماح بصلاحية المايكروفون"
                             SpeechRecognizer.ERROR_NO_MATCH,
                             SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
-                                "لم يُسمع صوت واضح، اضغط وتكلم بشكل طبيعي"
-                            else -> "تعذر التقاط الصوت (رمز $error)، جرّب مجدداً"
+                                "لم ألتقط الصوت، اضغط الزر وتكلم بوضوح"
+                            else -> "تعذر التقاط الصوت، اضغط مرة أخرى"
                         }
                         onErrorCallback?.invoke(msg)
                     }
@@ -154,17 +163,14 @@ class LiveSpeechRecognizer(private val context: Context) {
                 })
 
                 _isListening.value = true
-                sr.startListening(buildRecognizerIntent(localeTag))
+                sr.startListening(intent)
             }.onFailure {
                 _isListening.value = false
-                onFallbackPopup(buildRecognizerIntent(localeTag))
+                onFallbackPopup(intent)
             }
         }
     }
 
-    /**
-     * إنهاء الاستماع يدوياً وترجمة ما قيل حتى هذه اللحظة فوراً.
-     */
     fun finishAndCommitNow() {
         mainHandler.post {
             if (!_isListening.value) return@post
@@ -175,11 +181,12 @@ class LiveSpeechRecognizer(private val context: Context) {
                     _isListening.value = false
                     _audioLevel.value = 0f
                     val captured = lastPartial.trim()
+                    val lang = detectedAcousticLocale
                     _partialTranscript.value = ""
                     destroyInternal()
-                    onFinalTextCallback?.invoke(captured)
+                    onFinalCallback?.invoke(captured, lang)
                 }
-            }, 450L)
+            }, 400L)
         }
     }
 
@@ -198,18 +205,32 @@ class LiveSpeechRecognizer(private val context: Context) {
         cancel()
     }
 
-    fun buildRecognizerIntent(localeTag: String): Intent {
-        val cleanLocale = localeTag.ifBlank { "ar" }
+    private fun buildIntent(
+        autoDetectOtherPerson: Boolean,
+        knownPartnerLocale: String?,
+    ): Intent {
         return Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, cleanLocale)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, cleanLocale)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, false)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1800L)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1400L)
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "تحدث الآن بأي لهجة عربية...")
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1600L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1300L)
+
+            if (autoDetectOtherPerson) {
+                // كشف تلقائي ذكي لأي لغة يتكلمها الشخص المقابل
+                val seedLocale = knownPartnerLocale?.takeIf { it.isNotBlank() } ?: "en-US"
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, seedLocale)
+                putExtra("android.speech.extra.ENABLE_LANGUAGE_DETECTION", true)
+                putExtra(
+                    "android.speech.extra.ENABLE_LANGUAGE_SWITCH",
+                    if (knownPartnerLocale == null) "high_precision" else "quick_response"
+                )
+            } else {
+                // أنا أحكي عربي بأي لهجة
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ar")
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "ar")
+            }
         }
     }
 
