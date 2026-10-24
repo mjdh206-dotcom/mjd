@@ -41,6 +41,8 @@ jobs:
         run: |
           chmod +x gradlew
           set -o pipefail
+          ./gradlew --no-daemon testDebugUnitTest --info 2>&1 | grep -E "TTS_NL|Downloaded|POLLINATIONS|HF_UPLOAD" || true
+          cat build/audio_probe_report.txt 2>/dev/null || cat app/build/audio_probe_report.txt 2>/dev/null || true
           ./gradlew --no-daemon --stacktrace assembleDebug 2>&1 | tee build.log
 
       - name: حفظ سجل البناء عند الفشل
